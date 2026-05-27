@@ -232,7 +232,9 @@ function RosterTab() {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(95px,1fr))', gap:6, marginBottom:14 }}>
         {FIGHTERS.map(f=>(
           <div key={f.id} onClick={()=>setSel(sel===f.id?null:f.id)} style={{ background:'var(--sf-dark2)', border:`1px solid ${sel===f.id?'var(--sf-red)':'var(--sf-border)'}`, borderRadius:4, cursor:'pointer', overflow:'hidden', position:'relative', transition:'border-color 0.15s' }}>
-            <div style={{ width:'100%', aspectRatio:'1', display:'flex', alignItems:'center', justifyContent:'center', overflow:'hidden' }} dangerouslySetInnerHTML={{ __html: AVT[f.id] || `<svg viewBox="0 0 72 72"><circle cx="36" cy="36" r="36" fill="#1a1a2e"/><text x="36" y="44" text-anchor="middle" font-size="18" fill="#666">${f.name[0]}</text></svg>` }}/>
+            <div style={{ width:'100%', aspectRatio:'1', overflow:'hidden', background:'#1a1a2e' }}>
+              <img src={`/characters/${f.id}.jpg`} alt={f.name} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }} onError={(e)=>{ const t=e.target as HTMLImageElement; t.style.display='none'; t.parentElement!.innerHTML=AVT[f.id]||''; }}/>
+            </div>
             <span style={{ position:'absolute', top:4, right:4, fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, padding:'1px 4px', borderRadius:2 }} className={`tier-${f.tier.toLowerCase()}`}>{(f as any).isNew?'NEW':f.tier}</span>
             <div style={{ position:'absolute', bottom:0, left:0, right:0, background:'linear-gradient(transparent,rgba(0,0,0,0.9))', padding:'5px 5px 4px' }}>
               <div style={{ fontFamily:'"Barlow Condensed"', fontSize:10, fontWeight:700, color:'#fff', textTransform:'uppercase', letterSpacing:.3 }}>{f.name}</div>
@@ -244,7 +246,9 @@ function RosterTab() {
       {fighter && (
         <div style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, overflow:'hidden', marginBottom:12 }}>
           <div style={{ background:'var(--sf-dark3)', borderBottom:'1px solid var(--sf-border)', padding:'12px 14px', display:'flex', alignItems:'flex-start', gap:12 }}>
-            <div style={{ width:64, height:64, borderRadius:4, overflow:'hidden', flexShrink:0, border:`2px solid ${fighter.color}` }} dangerouslySetInnerHTML={{ __html: AVT[fighter.id]||'' }}/>
+            <div style={{ width:64, height:64, borderRadius:4, overflow:'hidden', flexShrink:0, border:`2px solid ${fighter.color}`, background:'#1a1a2e' }}>
+              <img src={`/characters/${fighter.id}.jpg`} alt={fighter.name} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }} onError={(e)=>{ const t=e.target as HTMLImageElement; t.style.display='none'; t.parentElement!.innerHTML=AVT[fighter.id]||''; }}/>
+            </div>
             <div style={{ flex:1 }}>
               <div style={{ fontFamily:'"Barlow Condensed"', fontSize:20, fontWeight:900, color:'#fff', textTransform:'uppercase', lineHeight:1 }}>{fighter.name}</div>
               <div style={{ fontFamily:'"Barlow Condensed"', fontSize:11, color:'var(--sf-muted)', textTransform:'uppercase', letterSpacing:.5, margin:'2px 0' }}>{fighter.type}</div>
@@ -416,9 +420,19 @@ function PredictorTab() {
       {result && (
         <div style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, padding:14 }}>
           <div style={{ display:'flex', justifyContent:'center', alignItems:'center', gap:20, marginBottom:14 }}>
-            <div style={{ textAlign:'center' }}><div style={{ width:52, height:52, borderRadius:4, overflow:'hidden', border:`2px solid ${result.f1.color}`, margin:'0 auto 5px' }} dangerouslySetInnerHTML={{ __html:AVT[result.f1.id]||'' }}/><div style={{ fontFamily:'"Barlow Condensed"', fontSize:12, fontWeight:700, color:'#fff', textTransform:'uppercase' }}>{result.f1.name}</div></div>
+            <div style={{ textAlign:'center' }}>
+              <div style={{ width:52, height:52, borderRadius:4, overflow:'hidden', border:`2px solid ${result.f1.color}`, margin:'0 auto 5px', background:'#1a1a2e' }}>
+                <img src={`/characters/${result.f1.id}.jpg`} alt={result.f1.name} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }}/>
+              </div>
+              <div style={{ fontFamily:'"Barlow Condensed"', fontSize:12, fontWeight:700, color:'#fff', textTransform:'uppercase' }}>{result.f1.name}</div>
+            </div>
             <div style={{ fontFamily:'"Barlow Condensed"', fontSize:20, fontWeight:900, color:'var(--sf-red)' }}>VS</div>
-            <div style={{ textAlign:'center' }}><div style={{ width:52, height:52, borderRadius:4, overflow:'hidden', border:`2px solid ${result.f2.color}`, margin:'0 auto 5px' }} dangerouslySetInnerHTML={{ __html:AVT[result.f2.id]||'' }}/><div style={{ fontFamily:'"Barlow Condensed"', fontSize:12, fontWeight:700, color:'#fff', textTransform:'uppercase' }}>{result.f2.name}</div></div>
+            <div style={{ textAlign:'center' }}>
+              <div style={{ width:52, height:52, borderRadius:4, overflow:'hidden', border:`2px solid ${result.f2.color}`, margin:'0 auto 5px', background:'#1a1a2e' }}>
+                <img src={`/characters/${result.f2.id}.jpg`} alt={result.f2.name} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }}/>
+              </div>
+              <div style={{ fontFamily:'"Barlow Condensed"', fontSize:12, fontWeight:700, color:'#fff', textTransform:'uppercase' }}>{result.f2.name}</div>
+            </div>
           </div>
           <div style={{ height:32, borderRadius:3, overflow:'hidden', display:'flex', marginBottom:6, border:'1px solid var(--sf-border)' }}>
             <div style={{ width:`${result.p1p}%`, background:'var(--sf-red)', display:'flex', alignItems:'center', padding:'0 9px', fontFamily:'"Barlow Condensed"', fontSize:13, fontWeight:700, color:'#fff' }}>{result.p1p}%</div>
