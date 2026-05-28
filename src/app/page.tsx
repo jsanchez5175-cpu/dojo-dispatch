@@ -614,7 +614,9 @@ function PlayersTab() {
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(130px,1fr))', gap:8, marginBottom:16 }}>
         {players.map(p=>(
           <div key={p.key} onClick={()=>setSel(sel===p.key?null:p.key)} style={{ background:'var(--sf-dark2)', border:`2px solid ${sel===p.key?'var(--sf-red)':'var(--sf-border)'}`, borderRadius:4, overflow:'hidden', cursor:'pointer', transition:'border-color 0.15s' }}>
-            <div style={{ width:'100%', aspectRatio:'1', overflow:'hidden' }} dangerouslySetInnerHTML={{ __html: PLAYER_PORTRAITS[p.key] || `<svg viewBox="0 0 120 120"><rect width="120" height="120" fill="#1a1a2e"/><text x="60" y="70" text-anchor="middle" font-size="32" fill="#666">${p.name[0]}</text></svg>` }}/>
+            <div style={{ width:'100%', aspectRatio:'1', overflow:'hidden', background:'#1a1a2e' }}>
+              <img src={`/players/${p.key}.jpg`} alt={p.name} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }} onError={(e)=>{ const t=e.target as HTMLImageElement; t.style.display='none'; t.parentElement!.innerHTML=PLAYER_PORTRAITS[p.key]||''; }}/>
+            </div>
             <div style={{ padding:'8px 9px' }}>
               <div style={{ fontFamily:'"Barlow Condensed"', fontSize:12, fontWeight:700, color:'#fff', textTransform:'uppercase', letterSpacing:.3, lineHeight:1, marginBottom:2 }}>{p.name}</div>
               <div style={{ fontSize:9, color:'var(--sf-muted)' }}>{p.flag} · {p.main}</div>
@@ -626,7 +628,9 @@ function PlayersTab() {
       {active && (
         <div style={{ background:'var(--sf-dark2)', border:'2px solid var(--sf-red)', borderRadius:4, overflow:'hidden', marginBottom:12 }}>
           <div style={{ background:'var(--sf-dark3)', borderBottom:'1px solid var(--sf-border)', display:'flex', gap:0, alignItems:'stretch' }}>
-            <div style={{ width:120, height:120, flexShrink:0, overflow:'hidden' }} dangerouslySetInnerHTML={{ __html: PLAYER_PORTRAITS[active.key]||'' }}/>
+            <div style={{ width:120, height:120, flexShrink:0, overflow:'hidden', background:'#1a1a2e' }}>
+              <img src={`/players/${active.key}.jpg`} alt={active.name} style={{ width:'100%', height:'100%', objectFit:'cover', objectPosition:'top center' }} onError={(e)=>{ const t=e.target as HTMLImageElement; t.style.display='none'; t.parentElement!.innerHTML=PLAYER_PORTRAITS[active.key]||''; }}/>
+            </div>
             <div style={{ flex:1, padding:'12px 14px', display:'flex', flexDirection:'column', justifyContent:'space-between' }}>
               <div>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:20, fontWeight:900, color:'#fff', textTransform:'uppercase', lineHeight:1 }}>{active.name}</div>
