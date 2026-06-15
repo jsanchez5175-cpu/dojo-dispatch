@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+newsensei.txt 
+swap_sensei.js 
+swap_sensei.py 
+*.bak
