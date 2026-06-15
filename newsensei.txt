@@ -1,0 +1,102 @@
+function SenseiTab() {
+  const FREE_LIMIT = 5
+  const [msgs, setMsgs] = useState([{ role:'assistant', content:'I am your AI Sensei. Ask me anything about SF6 — strategy, players, events, results, patch notes, meta or frame data.' }])
+  const [input, setInput] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [isPro, setIsPro] = useState(false)
+  const [usedToday, setUsedToday] = useState(0)
+  const [showPaywall, setShowPaywall] = useState(false)
+  const bottomRef = useRef<HTMLDivElement>(null)
+  useEffect(()=>{ bottomRef.current?.scrollIntoView({ behavior:'smooth' }) },[msgs])
+  useEffect(()=>{
+    try {
+      if (localStorage.getItem('dojoPro') === 'true') setIsPro(true)
+      const today = new Date().toISOString().slice(0,10)
+      const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
+      if (saved.date === today) setUsedToday(saved.count || 0)
+      else { localStorage.setItem('senseiUsage', JSON.stringify({ date:today, count:0 })); setUsedToday(0) }
+    } catch {}
+  },[])
+  const bumpUsage = () => {
+    try {
+      const today = new Date().toISOString().slice(0,10)
+      const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
+      const count = (saved.date === today ? (saved.count || 0) : 0) + 1
+      localStorage.setItem('senseiUsage', JSON.stringify({ date:today, count }))
+      setUsedToday(count)
+    } catch {}
+  }
+  const unlockPro = () => {
+    try { localStorage.setItem('dojoPro','true') } catch {}
+    setIsPro(true); setShowPaywall(false)
+    setMsgs(prev=>[...prev, { role:'assistant', content:'🥋 Dojo Pro unlocked — unlimited Sensei. Let\'s get to work.' }])
+  }
+  const send = async (text?: string) => {
+    const msg = text || input.trim()
+    if (!msg || loading) return
+    if (!isPro && usedToday >= FREE_LIMIT) { setShowPaywall(true); return }
+    setInput('')
+    const newMsgs = [...msgs, { role:'user', content:msg }]
+    setMsgs(newMsgs)
+    setLoading(true)
+    try {
+      const res = await fetch('/api/sensei', { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ messages:newMsgs.map(m=>({ role:m.role, content:m.content })) }) })
+      const data = await res.json()
+      setMsgs(prev=>[...prev, { role:'assistant', content:data.content || 'Sensei unavailable — please retry.' }])
+      if (!isPro) bumpUsage()
+    } catch {
+      setMsgs(prev=>[...prev, { role:'assistant', content:'Sensei unavailable — please retry.' }])
+    }
+    setLoading(false)
+  }
+  const quick = ['Combo Breaker 2026 preview','EndingWalker 10-0 Ryu','Daigo EWC 2026 qualification','Justin Wong career story','Best Season 3 rank pick','JP April 2026 patch','Punk vs MenaRD who wins EVO','How to escape burnout']
+  const remaining = Math.max(0, FREE_LIMIT - usedToday)
+  return (
+    <div>
+      <div style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, padding:14, marginBottom:12, display:'flex', gap:12, alignItems:'flex-start' }}>
+        <div style={{ width:48, height:48, background:'var(--sf-dark3)', border:'1px solid var(--sf-border)', borderRadius:4, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, position:'relative' }}>
+          <i className="ti ti-torii" style={{ fontSize:22, color:'var(--sf-red)' }}/>
+          <div style={{ position:'absolute', top:-3, right:-3, width:9, height:9, borderRadius:'50%', background:'var(--sf-green)', border:'2px solid var(--sf-dark2)' }} className="animate-blink"/>
+        </div>
+        <div style={{ flex:1 }}>
+          <div style={{ fontFamily:'"Barlow Condensed"', fontSize:18, fontWeight:900, color:'#fff', textTransform:'uppercase', lineHeight:1 }}>AI Sensei</div>
+          <div style={{ fontFamily:'"Barlow Condensed"', fontSize:10, fontWeight:600, letterSpacing:2, textTransform:'uppercase', color:'var(--sf-red)', marginTop:2 }}>Master Strategist · Live Web Search</div>
+          <div style={{ fontSize:11, color:'var(--sf-muted)', marginTop:4, lineHeight:1.5 }}>Searches live patch notes, tier lists, tournament results and frame data in real time.</div>
+        </div>
+        <div style={{ flexShrink:0, textAlign:'right' }}>
+          {isPro ? (
+            <span style={{ fontFamily:'"Barlow Condensed"', fontSize:10, fontWeight:700, letterSpacing:1, textTransform:'uppercase', padding:'3px 8px', borderRadius:2, background:'rgba(245,166,35,0.1)', border:'1px solid rgba(245,166,35,0.3)', color:'var(--sf-gold)' }}>★ Dojo Pro</span>
+          ) : (
+            <span style={{ fontFamily:'"Barlow Condensed"', fontSize:10, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', padding:'3px 8px', borderRadius:2, background:'var(--sf-dark3)', border:'1px solid var(--sf-border)', color:'var(--sf-muted)' }}>{remaining}/{FREE_LIMIT} free today</span>
+          )}
+        </div>
+      </div>
+      <div style={{ display:'flex', flexWrap:'wrap', gap:5, marginBottom:9 }}>
+        {quick.map(q=><button key={q} onClick={()=>send(q)} style={{ fontFamily:'"Barlow Condensed"', fontSize:10, fontWeight:700, letterSpacing:.5, textTransform:'uppercase', padding:'3px 8px', border:'1px solid var(--sf-border)', borderRadius:2, background:'transparent', color:'var(--sf-muted)', cursor:'pointer' }}>{q}</button>)}
+      </div>
+      {showPaywall && (
+        <div style={{ background:'rgba(245,166,35,0.05)', border:'1px solid rgba(245,166,35,0.25)', borderRadius:4, padding:16, marginBottom:12, textAlign:'center' }}>
+          <div style={{ fontFamily:'"Barlow Condensed"', fontSize:16, fontWeight:900, color:'var(--sf-gold)', textTransform:'uppercase', letterSpacing:1 }}>★ Daily Free Limit Reached</div>
+          <div style={{ fontSize:12, color:'var(--sf-muted)', margin:'6px 0 12px', lineHeight:1.5 }}>You&apos;ve used your {FREE_LIMIT} free Sensei questions today. Unlock <strong style={{ color:'#fff' }}>Dojo Pro</strong> for unlimited access — one-time $4.99.</div>
+          <button onClick={unlockPro} style={{ padding:'9px 22px', background:'var(--sf-gold)', color:'#1a1a1a', border:'none', borderRadius:3, fontFamily:'"Barlow Condensed"', fontSize:14, fontWeight:900, letterSpacing:1, textTransform:'uppercase', cursor:'pointer' }}>Unlock Dojo Pro · $4.99</button>
+        </div>
+      )}
+      <div style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, overflow:'hidden' }}>
+        <div style={{ background:'var(--sf-dark3)', borderBottom:'1px solid var(--sf-border)', padding:'8px 12px', display:'flex', alignItems:'center', gap:7 }}>
+          <div style={{ width:8, height:8, borderRadius:'50%', background:'var(--sf-green)' }} className="animate-blink"/>
+          <span style={{ fontFamily:'"Barlow Condensed"', fontSize:11, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'#fff', flex:1 }}>AI Sensei</span>
+          <span style={{ fontFamily:'"Barlow Condensed"', fontSize:9, color:'var(--sf-muted)' }}>Live search · Season 3</span>
+        </div>
+        <div style={{ padding:12, minHeight:160, maxHeight:400, overflowY:'auto', display:'flex', flexDirection:'column', gap:7 }}>
+          {msgs.map((m,i)=><div key={i} style={{ padding:'8px 11px', borderRadius:3, fontSize:12, lineHeight:1.55, maxWidth:'90%', background:m.role==='user'?'rgba(232,28,42,0.1)':'var(--sf-dark3)', border:m.role==='user'?'1px solid rgba(232,28,42,0.2)':'1px solid var(--sf-border)', alignSelf:m.role==='user'?'flex-end':'flex-start', color:'var(--sf-text)' }}>{m.content}</div>)}
+          {loading && <div style={{ padding:'8px 11px', borderRadius:3, fontSize:12, background:'var(--sf-dark3)', border:'1px solid var(--sf-border)', alignSelf:'flex-start', color:'var(--sf-muted)', display:'flex', alignItems:'center', gap:6 }}><div style={{ width:10, height:10, border:'2px solid rgba(255,255,255,0.2)', borderTopColor:'#fff', borderRadius:'50%' }} className="animate-spin-sm"/>Sensei searching...</div>}
+          <div ref={bottomRef}/>
+        </div>
+        <div style={{ borderTop:'1px solid var(--sf-border)', display:'flex' }}>
+          <input value={input} onChange={e=>setInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&send()} placeholder="Ask about events, players, strategy, frame data..." style={{ flex:1, padding:'10px 13px', background:'transparent', border:'none', fontSize:12, color:'var(--sf-text)', fontFamily:'Barlow, sans-serif', outline:'none' }}/>
+          <button onClick={()=>send()} style={{ padding:'10px 14px', background:'var(--sf-red)', border:'none', color:'#fff', cursor:'pointer', fontSize:13 }}><i className="ti ti-send"/></button>
+        </div>
+      </div>
+    </div>
+  )
+}
