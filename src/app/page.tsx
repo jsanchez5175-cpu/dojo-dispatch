@@ -1,12 +1,32 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import toast from 'react-hot-toast'
+import TheClimb from '@/components/TheClimb'
+import PunishFinder from '@/components/PunishFinder'
+import CharacterDossier from '@/components/CharacterDossier'
+import RivalRadar from '@/components/RivalRadar'
+import LabPlaylist from '@/components/LabPlaylist'
+import FrameFlashcards from '@/components/FrameFlashcards'
+import VoiceDebrief from '@/components/VoiceDebrief'
+import GhostRival from '@/components/GhostRival'
+import CommunityTierList from '@/components/CommunityTierList'
+import { initBilling, isPro as checkProStatus, buyPro } from '@/lib/revenuecat'
 
-type TabId = 'newsletter' | 'roster' | 'sensei' | 'meta' | 'predictor' | 'quiz' | 'events' | 'players' | 'results'
+type TabId = 'newsletter' | 'roster' | 'sensei' | 'climb' | 'punish' | 'challenger' | 'rivals' | 'lab' | 'flashcards' | 'debrief' | 'ghost' | 'tierlist' | 'meta' | 'predictor' | 'quiz' | 'events' | 'players' | 'results'
 
 const TABS = [
   { id: 'newsletter', label: 'Newsletter',  icon: 'ti-news' },
   { id: 'roster',     label: 'Roster',      icon: 'ti-shield' },
   { id: 'sensei',     label: 'AI Sensei',   icon: 'ti-torii' },
+  { id: 'climb',      label: 'The Climb',   icon: 'ti-trending-up' },
+  { id: 'punish',     label: 'Punish Finder', icon: 'ti-target' },
+  { id: 'challenger', label: 'New Challenger', icon: 'ti-user-plus' },
+  { id: 'rivals',     label: 'Rival Radar', icon: 'ti-radar-2' },
+  { id: 'lab',        label: 'Lab Playlist', icon: 'ti-playlist' },
+  { id: 'flashcards', label: 'Flashcards',  icon: 'ti-cards' },
+  { id: 'debrief',    label: 'Voice Debrief', icon: 'ti-microphone' },
+  { id: 'ghost',      label: 'Ghost Rival', icon: 'ti-ghost' },
+  { id: 'tierlist',   label: 'Tier List',   icon: 'ti-stack' },
   { id: 'meta',       label: 'Meta',        icon: 'ti-flame' },
   { id: 'predictor',  label: 'Predictor',   icon: 'ti-bolt' },
   { id: 'quiz',       label: 'Daily Quiz',  icon: 'ti-brain' },
@@ -43,6 +63,7 @@ const FIGHTERS = [
   { id:'mai',      name:'Mai',       type:'Rush-down',    tier:'A', color:'#CC2244', difficulty:'Intermediate',stats:{power:76,speed:88,range:72,defense:66,combo:84,drive:86}, tags:['SNK','Fan','Kunoichi'],            profile:'SNK kunoichi as SF6 DLC. Fan projectiles and aerial mobility create unique pressure angles.', lore:'Shiranui school kunoichi and SNK fan favorite. Mai Shiranui joins SF6 as premium DLC alongside Terry. Her fan projectiles and aerial combat style bring a unique pressure angle not seen in the base roster.', s3:'Brand new as Year 2 DLC. A-tier with strong air-to-air and fan pressure.', topPlayers:'Gaining traction on regional circuits — watch for Mai specialists', combo:'Kachousen fan, DR, j.HP, cr.HP xx SA2', strengths:['Fan pressure','Air mobility','Mix-up angles'], weaknesses:['Needs practice','Resource dependent','Different from SF chars'] },
   { id:'mbison',   name:'M. Bison',  type:'Rush-down',    tier:'B', color:'#330088', difficulty:'Intermediate',stats:{power:86,speed:76,range:70,defense:74,combo:82,drive:80}, tags:['Psycho Power','Dictator','Return'], profile:'The dictator returns. April 2026 fixed the Psycho Mine bug. Classic Bison pressure with modern tools.', lore:'The Shadaloo Dictator returns. M. Bison uses Psycho Power in its purest destructive form. His Psycho Crusher and Scissor Kicks have terrified players since SF2. His return in SF6 has reignited his legacy.', s3:'Psycho Mine Drive Reversal bug fixed April 15, 2026. Pressure options remain strong. B-tier with classic fundamentals.', topPlayers:'Multiple Bison specialists returning now that he\'s back on the roster', combo:'Psycho Mine setup, DR, cr.HP xx Psycho Crusher SA2', strengths:['Strong pressure','Psycho Power tools','Classic fundamentals'], weaknesses:['Bug nerfed April patch','Corner dependent','Needs reads'] },
   { id:'sagat',    name:'Sagat',     type:'Zoner',        tier:'B', color:'#8B5E3C', difficulty:'Intermediate',stats:{power:88,speed:58,range:86,defense:80,combo:70,drive:74}, tags:['Tiger Shot','Muay Thai','Emperor'], profile:'The Muay Thai Emperor. Tiger Shot walls and Tiger Uppercut anti-air — fundamentals monster.', lore:'The Muay Thai Emperor and former SF1 final boss. Sagat lost his eye to Ryu\'s Shoryuken and carries that scar forever. He fights with brutal Tiger Shots and Tiger Uppercuts that define fundamental fighting game play.', s3:'Tiger Shot properties adjusted. Tiger Uppercut anti-air refined. B-tier as a fundamentals monster for patient players.', topPlayers:'Sagat specialists exist across all regions — historically popular in Thailand and Japan', combo:'Tiger Shot wall, walk forward, cr.HP xx Tiger Uppercut SA1', strengths:['Tiger Shot zoning','Elite anti-air','High damage'], weaknesses:['Slow movement','Charge mechanic','Predictable gameplan'] },
+  { id:'ingrid',   name:'Ingrid',    type:'Mix-up',       tier:'C', color:'#D4A017', isNew:true, difficulty:'Intermediate',stats:{power:70,speed:80,range:72,defense:62,combo:78,drive:80}, tags:['New','Sun Goddess','Mobility','Install'], profile:'Just-added Year 3 drop. Sun Shot zoning into acrobatic mix-up, with a power-up install to close rounds. Early data — verify her exact SF6 kit in training mode before trusting any number here.', lore:'The Eternal Goddess of the sun, worshipped for centuries in a hidden valley. Ingrid fights to keep the balance between order and chaos, wielding solar power passed through her bloodline. Her return brings classic teleport mix-ups reimagined for SF6\'s Drive system.', s3:'Added mid Season 3 as the newest DLC drop. Dossier is unverified — the community is still mapping her frame data and true tier placement.', topPlayers:'Still being discovered — first Ingrid specialists will emerge at Combo Breaker and EVO 2026.', combo:'Sun Shot confirm, DR, cr.HP xx install cancel (verify in training mode)', strengths:['Sun Shot zoning','Mobility mix-ups','Install pressure window'], weaknesses:['Unproven tier placement','Install has a clock','Data still unverified'] },
 ]
 
 const MU: Record<string,Record<string,[number,number]>> = {
@@ -79,6 +100,10 @@ const PLAYER_PORTRAITS: Record<string,string> = {
   justinwong:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="jwg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#001a33"/><stop offset="100%" stop-color="#002a44"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#jwg)"/><circle cx="60" cy="40" r="22" fill="#c8a882"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#001a33"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#001a33"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#001a33"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#0066cc"/><circle cx="60" cy="30" r="10" fill="#c8a882"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#c8a882"/><rect x="12" y="78" width="18" height="6" rx="2" fill="#c8a882"/><rect x="90" y="78" width="18" height="6" rx="2" fill="#c8a882"/><rect x="48" y="0" width="24" height="5" rx="2" fill="#0066cc" opacity="0.6"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#0066cc">NEW YORK · 8x EVO</text></svg>`,
   angrybird:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="abg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#001a0a"/><stop offset="100%" stop-color="#002a14"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#abg)"/><circle cx="60" cy="40" r="22" fill="#8B5E3C"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#001a0a"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#001a0a"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#001a0a"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#00aa44"/><circle cx="60" cy="30" r="10" fill="#8B5E3C"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#8B5E3C"/><rect x="16" y="100" width="88" height="14" rx="3" fill="#00aa44"/><text x="60" y="111" text-anchor="middle" font-family="Arial" font-size="8" font-weight="900" fill="#fff">EVO 2023 CHAMPION</text></svg>`,
   nuckledu:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ndg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0a1422"/><stop offset="100%" stop-color="#1a2a3a"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#ndg)"/><circle cx="60" cy="40" r="22" fill="#d4a574"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#1a3a1a"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#1a3a1a"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#1a3a1a"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#4a7a4a"/><circle cx="60" cy="30" r="10" fill="#d4a574"/><rect x="38" y="17" width="44" height="14" rx="3" fill="#d4a574"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#4a7a4a">EVO 2016 CHAMP</text></svg>`,
+  sahara:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="shg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a1400"/><stop offset="100%" stop-color="#2a2200"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#shg)"/><circle cx="60" cy="40" r="22" fill="#c8a070"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#1a1400"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#1a1400"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#1a1400"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#F5A623"/><circle cx="60" cy="30" r="10" fill="#c8a070"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#c8a070"/><rect x="16" y="100" width="88" height="14" rx="3" fill="#F5A623"/><text x="60" y="111" text-anchor="middle" font-family="Arial" font-size="8" font-weight="900" fill="#000">CC12 CHAMPION</text></svg>`,
+  kawano:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="kwg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#001420"/><stop offset="100%" stop-color="#002438"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#kwg)"/><circle cx="60" cy="40" r="22" fill="#c8a070"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#001420"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#001420"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#001420"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#00D4FF"/><circle cx="60" cy="30" r="10" fill="#c8a070"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#c8a070"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#00D4FF">CC12 TOP 8 · JAPAN</text></svg>`,
+  nemo:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="nmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a0000"/><stop offset="100%" stop-color="#2a0a0a"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#nmg)"/><circle cx="60" cy="40" r="22" fill="#d4a882"/><rect x="24" y="58" width="72" height="44" rx="8" fill="#1a0000"/><rect x="10" y="62" width="20" height="32" rx="6" fill="#1a0000"/><rect x="90" y="62" width="20" height="32" rx="6" fill="#1a0000"/><rect x="28" y="59" width="64" height="7" rx="2" fill="#880000"/><circle cx="60" cy="30" r="10" fill="#d4a882"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#d4a882"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#cc4444">GRAPPLER · KOREA</text></svg>`,
+  fuudo:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="fdg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a0f00"/><stop offset="100%" stop-color="#2a1a00"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#fdg)"/><circle cx="60" cy="40" r="22" fill="#c8a070"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#1a0f00"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#1a0f00"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#1a0f00"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#CC6600"/><circle cx="60" cy="30" r="10" fill="#c8a070"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#c8a070"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#CC6600">DHALSIM VETERAN</text></svg>`,
 }
 
 const AVT: Record<string,string> = {
@@ -109,6 +134,7 @@ const AVT: Record<string,string> = {
   mai:`<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="36" fill="#1a0010"/><ellipse cx="36" cy="21" rx="9" ry="10" fill="#d4a882"/><rect x="21" y="30" width="30" height="20" rx="5" fill="#cc2244"/><rect x="17" y="30" width="9" height="15" rx="4" fill="#cc2244"/><rect x="46" y="30" width="9" height="15" rx="4" fill="#cc2244"/><circle cx="36" cy="13" r="5" fill="#d4a882"/><circle cx="52" cy="10" r="5" fill="#ff6688" opacity="0.6"/></svg>`,
   mbison:`<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="36" fill="#0a0022"/><ellipse cx="36" cy="21" rx="9" ry="10" fill="#c8c0d8"/><rect x="20" y="30" width="32" height="22" rx="5" fill="#220044"/><rect x="16" y="30" width="9" height="16" rx="4" fill="#220044"/><rect x="47" y="30" width="9" height="16" rx="4" fill="#220044"/><circle cx="36" cy="13" r="5" fill="#c8c0d8"/></svg>`,
   sagat:`<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="36" fill="#0a0800"/><ellipse cx="36" cy="19" rx="12" ry="12" fill="#8B5E3C"/><rect x="14" y="28" width="44" height="28" rx="5" fill="#cc4400" opacity="0.8"/><rect x="6" y="32" width="14" height="22" rx="5" fill="#cc4400" opacity="0.8"/><rect x="52" y="32" width="14" height="22" rx="5" fill="#cc4400" opacity="0.8"/><circle cx="36" cy="10" r="5" fill="#8B5E3C"/></svg>`,
+  ingrid:`<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="36" fill="#1a1400"/><ellipse cx="36" cy="21" rx="9" ry="10" fill="#d4a574"/><rect x="21" y="30" width="30" height="20" rx="5" fill="#D4A017"/><rect x="17" y="30" width="9" height="16" rx="4" fill="#D4A017"/><rect x="46" y="30" width="9" height="16" rx="4" fill="#D4A017"/><circle cx="36" cy="13" r="6" fill="#F5A623" opacity="0.7"/><circle cx="36" cy="13" r="3" fill="#F5A623"/></svg>`,
 }
 
 function SL({ children }: { children: React.ReactNode }) {
@@ -124,6 +150,8 @@ function ST({ children }: { children: React.ReactNode }) {
 }
 export default function HomePage() {
   const [active, setActive] = useState<TabId>('newsletter')
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
+  const askSensei = (prompt: string) => { setPendingPrompt(prompt); setActive('sensei') }
   return (
     <div style={{ minHeight:'100vh', background:'var(--sf-dark)' }}>
       <header style={{ background:'var(--sf-dark2)', borderBottom:'2px solid var(--sf-red)' }}>
@@ -170,7 +198,16 @@ export default function HomePage() {
       <main style={{ maxWidth:1100, margin:'0 auto', padding:'20px 16px' }}>
         {active==='newsletter' && <NewsletterTab />}
         {active==='roster'     && <RosterTab />}
-        {active==='sensei'     && <SenseiTab />}
+        {active==='sensei'     && <SenseiTab pendingPrompt={pendingPrompt} onConsumePrompt={()=>setPendingPrompt(null)} />}
+        {active==='climb'      && <TheClimb />}
+        {active==='punish'     && <PunishFinder onAskSensei={askSensei} />}
+        {active==='challenger' && <CharacterDossier onAskSensei={askSensei} />}
+        {active==='rivals'     && <RivalRadar onAskSensei={askSensei} />}
+        {active==='lab'        && <LabPlaylist onAskSensei={askSensei} />}
+        {active==='flashcards' && <FrameFlashcards />}
+        {active==='debrief'    && <VoiceDebrief />}
+        {active==='ghost'      && <GhostRival onAskSensei={askSensei} />}
+        {active==='tierlist'   && <CommunityTierList />}
         {active==='meta'       && <MetaTab />}
         {active==='predictor'  && <PredictorTab />}
         {active==='quiz'       && <QuizTab />}
@@ -190,6 +227,7 @@ function NewsletterTab() {
     { cat:'Meta Report', cc:'var(--sf-accent)', title:"Season 3: EndingWalker's 10-0, Tokido Goes JP", sub:'The defining storylines of the early Season 3 metagame', body:"Season 3 is six weeks in. Alex sits at B-tier with high upside. The headline is EndingWalker going 10-0 in the SFL with Ryu. After Elena update buffs he's proving the character is elite.", hl:'Top storylines: EndingWalker 10-0 Ryu — MOUZ top seed · Tokido switches to JP for Season 3 · Kawano on Akuma at CC12 · Multiple Ryu in CC12 top 8', date:'Meta update' },
     { cat:'FGC Legends', cc:'var(--sf-purple)', title:'Justin Wong & Daigo: The GOATs Are Still Competing', sub:'Two of the greatest ever — still showing up in Season 3', body:"Justin Wong has been competing since SF2 and is still posting results. Daigo Umehara — The Beast — qualified for EWC 2026 via the SFL World Championship at age 42. Longevity is the ultimate flex.", hl:'Daigo qualified for EWC 2026 Riyadh $1M event via SFL WC · Justin Wong still competing after 30+ years · Combined 40+ years of top-level FGC experience', date:'Legends feature' },
     { cat:'Community Corner', cc:'var(--sf-green)', title:'From Casual to Competitor: Your FGC Roadmap', sub:'How to go from SF6 online ranked to standing on stage', body:'The FGC is one of the most welcoming competitive communities in gaming. The jump from online to offline is real — but nothing accelerates improvement faster.', hl:'Entry points: Find locals at start.gg · SF6 subreddit & Discord · CPT World Warrior qualifiers — open to everyone · Follow EventHubs & Liquipedia', date:'Community' },
+    { cat:'Character Reveal', cc:'var(--sf-gold)', title:'Ingrid Joins the Roster: The Eternal Goddess Returns', sub:'Season 3\'s newest drop brings sun-powered mix-ups to SF6', body:'The classic Sun Goddess arrives with a Sun Shot zoning tool, mobility specials that threaten side-switches, and an install state built for extended pressure. Early days — the community is still mapping her frame data.', hl:'New Challenger tab has her full day-one dossier · Dossier flagged unverified until in-game confirmation · First Ingrid specialists expected at Combo Breaker', date:'New Challenger' },
   ]
   return (
     <div>
@@ -300,25 +338,30 @@ function RosterTab() {
   )
 }
 
-function SenseiTab() {
+function SenseiTab({ pendingPrompt, onConsumePrompt }: { pendingPrompt?: string | null; onConsumePrompt?: () => void }) {
   const FREE_LIMIT = 5
   const [msgs, setMsgs] = useState([{ role:'assistant', content:'I am your AI Sensei. Ask me anything about SF6 — strategy, players, events, results, patch notes, meta or frame data.' }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [isPro, setIsPro] = useState(false)
+  const [purchasing, setPurchasing] = useState(false)
   const [usedToday, setUsedToday] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   useEffect(()=>{ bottomRef.current?.scrollIntoView({ behavior:'smooth' }) },[msgs])
   useEffect(()=>{
+    initBilling()
+    checkProStatus().then(p => { if (p) setIsPro(true) })
     try {
-      if (localStorage.getItem('dojoPro') === 'true') setIsPro(true)
       const today = new Date().toISOString().slice(0,10)
       const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
       if (saved.date === today) setUsedToday(saved.count || 0)
       else { localStorage.setItem('senseiUsage', JSON.stringify({ date:today, count:0 })); setUsedToday(0) }
     } catch {}
   },[])
+  useEffect(()=>{
+    if (pendingPrompt) { send(pendingPrompt); onConsumePrompt?.() }
+  },[pendingPrompt])
   const bumpUsage = () => {
     try {
       const today = new Date().toISOString().slice(0,10)
@@ -328,10 +371,21 @@ function SenseiTab() {
       setUsedToday(count)
     } catch {}
   }
-  const unlockPro = () => {
-    try { localStorage.setItem('dojoPro','true') } catch {}
-    setIsPro(true); setShowPaywall(false)
-    setMsgs(prev=>[...prev, { role:'assistant', content:'🥋 Dojo Pro unlocked — unlimited Sensei. Let\'s get to work.' }])
+  const unlockPro = async () => {
+    setPurchasing(true)
+    try {
+      const active = await buyPro()
+      if (active) {
+        setIsPro(true); setShowPaywall(false)
+        setMsgs(prev=>[...prev, { role:'assistant', content:'🥋 Dojo Pro unlocked — unlimited Sensei. Let\'s get to work.' }])
+        toast.success('Dojo Pro unlocked!')
+      } else {
+        toast('Purchase cancelled')
+      }
+    } catch {
+      toast.error('Purchase unavailable — try again from the Dojo Dispatch Android app.')
+    }
+    setPurchasing(false)
   }
   const send = async (text?: string) => {
     const msg = text || input.trim()
@@ -380,7 +434,7 @@ function SenseiTab() {
         <div style={{ background:'rgba(245,166,35,0.05)', border:'1px solid rgba(245,166,35,0.25)', borderRadius:4, padding:16, marginBottom:12, textAlign:'center' }}>
           <div style={{ fontFamily:'"Barlow Condensed"', fontSize:16, fontWeight:900, color:'var(--sf-gold)', textTransform:'uppercase', letterSpacing:1 }}>★ Daily Free Limit Reached</div>
           <div style={{ fontSize:12, color:'var(--sf-muted)', margin:'6px 0 12px', lineHeight:1.5 }}>You&apos;ve used your {FREE_LIMIT} free Sensei questions today. Unlock <strong style={{ color:'#fff' }}>Dojo Pro</strong> for unlimited access — one-time $4.99.</div>
-          <button onClick={unlockPro} style={{ padding:'9px 22px', background:'var(--sf-gold)', color:'#1a1a1a', border:'none', borderRadius:3, fontFamily:'"Barlow Condensed"', fontSize:14, fontWeight:900, letterSpacing:1, textTransform:'uppercase', cursor:'pointer' }}>Unlock Dojo Pro · $4.99</button>
+          <button onClick={unlockPro} disabled={purchasing} style={{ padding:'9px 22px', background:'var(--sf-gold)', color:'#1a1a1a', border:'none', borderRadius:3, fontFamily:'"Barlow Condensed"', fontSize:14, fontWeight:900, letterSpacing:1, textTransform:'uppercase', cursor:purchasing?'default':'pointer', opacity:purchasing?0.6:1 }}>{purchasing ? 'Processing…' : 'Unlock Dojo Pro · $4.99'}</button>
         </div>
       )}
       <div style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, overflow:'hidden' }}>
@@ -582,6 +636,7 @@ function EventsTab() {
     {bg:'linear-gradient(135deg,#1a0a2e,#2a1044)',title:'Capcom Cup 12 Grand Finals',      meta:'Mar 14, 2026 · Tokyo · Sahara wins',      sub:'Official VOD · $1,282,000 pool',        dur:'2:14:38',url:'https://www.youtube.com/@CapcomFighters'},
     {bg:'linear-gradient(135deg,#1a1000,#3a2200)',title:'EVO 2025 SF6 Top 8',              meta:'Aug 3, 2025 · Las Vegas · MenaRD wins',   sub:'Official VOD · EVO',                    dur:'1:48:22',url:'https://www.youtube.com/@CapcomFighters'},
     {bg:'linear-gradient(135deg,#0a1a0a,#1a3a1a)',title:'Alex Reveal Trailer — Year 3',   meta:'Mar 2026 · Year 3 DLC launch',            sub:'Official · Capcom Fighters',            dur:'0:45:11',url:'https://www.youtube.com/@CapcomFighters'},
+    {bg:'linear-gradient(135deg,#1a1400,#3a2c00)',title:'Ingrid Reveal Trailer — Year 3', meta:'Season 3 · Newest DLC drop',              sub:'Official · Capcom Fighters',            dur:'0:38:29',url:'https://www.youtube.com/@CapcomFighters'},
     {bg:'linear-gradient(135deg,#1a1a2e,#0a0a1a)',title:'EVO 2024 Finals — Punk wins',    meta:'Jul 21, 2024 · 10,240 entrants',          sub:'Official VOD · EVO',                    dur:'1:22:04',url:'https://www.youtube.com/@CapcomFighters'},
     {bg:'linear-gradient(135deg,#0a0a0a,#1a0000)',title:"Daigo's EWC Qualification",      meta:'2025 · SFL World Championship',           sub:'The Beast qualifies for $1M Riyadh',    dur:'0:52:18',url:'https://www.youtube.com/@CapcomFighters'},
     {bg:'linear-gradient(135deg,#001422,#002244)',title:'Justin Wong: 30 Years of FGC',   meta:'Career highlights · Still competing SF6', sub:'Living legend · New York City',          dur:'0:38:44',url:'https://www.youtube.com/@CapcomFighters'},
@@ -716,6 +771,34 @@ function PlayersTab() {
       moment:"EVO 2016 Grand Finals — claiming the championship in dominant fashion, cementing his place among America's all-time greats.",
       timeline:[{yr:'2012',ev:'Emerges as Guile specialist on the American circuit'},{yr:'2014',ev:'First major tournament win'},{yr:'2016',ev:'EVO 2016 Champion with Nash/Guile'},{yr:'2018-2022',ev:'Consistent top placements SF4 and SF5'},{yr:'2023',ev:'Adapts to SF6 with Guile'},{yr:'2026',ev:'Still competing — one of America\'s most consistent'}],
       stats:{neutralIQ:94,defense:97,reads:93,adaptation:88,clutch:90}, tags:['Guile specialist','Defensive master','Walk-back punish','Consistent placer'], results:[{ev:'EVO 2016',char:'Nash',place:'1st',prize:'EVO Champion'},{ev:'SF6 CPT',char:'Guile',place:'Multiple Top 8s',prize:'Consistent'}] },
+    { key:'sahara',       name:'Sahara',        flag:'🇯🇵', team:'',          main:'Ryu',      badge:'Capcom Cup 12 Champion',       bc:'var(--sf-gold)',   bigStat:'CC12', bigLabel:'Champion',      era:'Current',
+      bio:"Freshly crowned Capcom Cup 12 champion. Sahara's Ryu run through a stacked Tokyo bracket is the loudest proof yet that Season 3 Ryu is legitimately elite — the same story EndingWalker has been telling all year.",
+      playstyle:"Sahara plays textbook Season 3 Ryu — patient neutral, disciplined anti-airs, and Denjin Hadoken zoning that punishes any hesitation. What separates her is composure: she doesn't flinch in bracket resets, and her punish-counter conversions in Grand Finals were some of the cleanest of the tournament.",
+      rivalry:"Sahara vs EndingWalker — two Ryu specialists from different regions both proving Season 3 Ryu is a genuine top-tier pick, not a fluke.",
+      moment:"Capcom Cup 12 Grand Finals, March 2026 — closing out a stacked $1,282,000 Tokyo bracket with Ryu, validating the character's post-Elena resurgence in front of a home crowd.",
+      timeline:[{yr:'2019',ev:'Begins competing on the Japanese regional circuit'},{yr:'2021',ev:'First notable CPT Japan placements'},{yr:'2023',ev:'Consistent top 8s establish her as a Ryu specialist to watch'},{yr:'2025',ev:'Qualifies for Capcom Cup 12 via CPT points'},{yr:'2026',ev:'Capcom Cup 12 Champion — Tokyo Grand Finals'}],
+      stats:{neutralIQ:93,execution:91,reads:90,drive:88,clutch:96}, tags:['Season 3 Ryu proof','Denjin zoning','CC12 Champion','Punish Counter specialist'], results:[{ev:'CC12',char:'Ryu',place:'1st',prize:'$350,000+'},{ev:'EWC 2026',char:'Ryu',place:'Qualified',prize:'$1M pool'}] },
+    { key:'kawano',       name:'Kawano',        flag:'🇯🇵', team:'',          main:'Chun-Li/Akuma', badge:'CC12 Top 8 · Dual Threat', bc:'var(--sf-accent)', bigStat:'2',    bigLabel:'CC12 chars used', era:'Current',
+      bio:"One of the few players elite enough to run two S-tier characters in the same event. Kawano's Chun-Li footsies and Akuma punish game both reached Capcom Cup 12 top 8.",
+      playstyle:"Kawano switches between Chun-Li's patient poke-and-chip neutral and Akuma's all-in punish windows depending on the matchup — a character-select mind game most players can't replicate credibly at his execution level.",
+      rivalry:"Kawano vs Sahara — the CC12 storyline of two standouts pushing character mastery to its ceiling.",
+      moment:"Capcom Cup 12 top 8 — the first player in the tournament to bench a second S-tier character mid-run and win with it.",
+      timeline:[{yr:'2020',ev:'Rises through the Japanese SF6 launch scene'},{yr:'2022',ev:'First CPT Japan regional win'},{yr:'2023',ev:'Adds Akuma as a secondary in tournament play'},{yr:'2024',ev:'Multiple Premier top 8s across both characters'},{yr:'2025',ev:'Qualifies for CC12'},{yr:'2026',ev:'CC12 Top 8 with two different characters'}],
+      stats:{execution:96,adaptation:94,neutralIQ:90,reads:91,clutch:88}, tags:['Dual-character threat','Chun-Li footsies','Akuma punish game','Character-select mind games'], results:[{ev:'CC12',char:'Chun-Li/Akuma',place:'Top 8',prize:'Qualified'},{ev:'CPT Japan',char:'Chun-Li',place:'1st',prize:'Regional win'}] },
+    { key:'nemo',         name:'Nemo',          flag:'🇰🇷', team:'',          main:'Zangief',  badge:'Grappler Specialist',          bc:'#880000',          bigStat:'B-tier', bigLabel:'proof of concept', era:'Current',
+      bio:"The most prominent Zangief player at international level, proving the Red Cyclone still terrifies opponents when every SPD is a threat. Nemo's defensive reads open the door for devastating momentum swings.",
+      playstyle:"Nemo plays a patient waiting game — absorbing pressure behind Zangief's armor and defense stats until one read lands. A single SPD from Nemo changes an entire set's momentum, and he knows exactly when to gamble.",
+      rivalry:"Nemo vs zoning specialists — his matches against fireball characters are must-watch clinics on closing distance against the run-away game plan.",
+      moment:"A tournament-defining SPD read against a heavily favored opponent at a CPT regional, turning a near-elimination set into a comeback win.",
+      timeline:[{yr:'2019',ev:'Begins competing on the South Korean circuit'},{yr:'2021',ev:"Establishes himself as the region's top Zangief"},{yr:'2023',ev:'First international CPT regional placement'},{yr:'2024',ev:'Multiple online and offline grappler showcase wins'},{yr:'2025',ev:'Continues as the benchmark Zangief at every major he enters'},{yr:'2026',ev:'Competing for a Season 3 CPT points push'}],
+      stats:{defense:96,reads:93,patience:97,power:92,clutch:90}, tags:['SPD reads','Armor discipline','Momentum swings','Grappler benchmark'], results:[{ev:'CPT Korea',char:'Zangief',place:'1st',prize:'Regional win'},{ev:'CC12',char:'Zangief',place:'Top 32',prize:'Qualified'}] },
+    { key:'fuudo',        name:'Fuudo',         flag:'🇯🇵', team:'',          main:'Dhalsim',  badge:'Dhalsim Veteran',              bc:'#CC6600',          bigStat:'C-tier', bigLabel:'made lethal',   era:'Legend',
+      bio:"A historically prominent Dhalsim player who has proven the longest limbs in the game can still win at the highest level, generation after generation of Street Fighter.",
+      playstyle:"Fuudo plays spacing chess — using Dhalsim's absurd range to control exactly where a match happens, then punishing any approach with fire and limbs before it lands. Teleport mix-ups arrive exactly when opponents think they're safe.",
+      rivalry:"Fuudo vs rushdown specialists — his sets are the definitive teaching tape on how patience beats aggression when the spacing is right.",
+      moment:"A signature teleport-mix comeback at a major SF6 event, turning what looked like a lost round into a highlight-reel win purely on spacing mastery.",
+      timeline:[{yr:'2008',ev:'Establishes himself in the Japanese arcade scene'},{yr:'2012',ev:'Multiple major placements across SF4'},{yr:'2019',ev:'Continues Dhalsim mastery into SFV'},{yr:'2023',ev:'Adapts Dhalsim to SF6 Drive system'},{yr:'2025',ev:'Still competing at Premiers with a C-tier character'},{yr:'2026',ev:'Proof that character loyalty still wins rounds'}],
+      stats:{neutralIQ:95,reads:92,patience:98,execution:90,clutch:87}, tags:['Longest limbs','Spacing chess','Teleport mix','Character loyalty'], results:[{ev:'Multiple Premiers',char:'Dhalsim',place:'Various Top 8s',prize:'Sustained excellence'},{ev:'CC12',char:'Dhalsim',place:'Qualified',prize:'Season 3'}] },
   ]
   const active = sel ? players.find(p=>p.key===sel) : null
   return (
@@ -763,32 +846,24 @@ function PlayersTab() {
           </div>
           <div style={{ padding:'11px 14px' }}>
             <p style={{ fontSize:12, color:'#aaaacc', lineHeight:1.65, marginBottom:9 }}>{active.bio}</p>
-
-            {/* Playstyle */}
             {(active as any).playstyle && (
               <div style={{ marginBottom:10, padding:'9px 11px', background:'rgba(0,212,255,0.04)', border:'1px solid rgba(0,212,255,0.14)', borderRadius:3 }}>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-accent)', marginBottom:4 }}>Playstyle</div>
                 <p style={{ fontSize:11, color:'#aaaacc', lineHeight:1.6, margin:0 }}>{(active as any).playstyle}</p>
               </div>
             )}
-
-            {/* Signature Moment */}
             {(active as any).moment && (
               <div style={{ marginBottom:10, padding:'9px 11px', background:'rgba(245,166,35,0.04)', border:'1px solid rgba(245,166,35,0.14)', borderRadius:3 }}>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-gold)', marginBottom:4 }}>⚡ Signature Moment</div>
                 <p style={{ fontSize:11, color:'#aaaacc', lineHeight:1.6, margin:0 }}>{(active as any).moment}</p>
               </div>
             )}
-
-            {/* Rivalry */}
             {(active as any).rivalry && (
               <div style={{ marginBottom:10, padding:'9px 11px', background:'rgba(232,28,42,0.04)', border:'1px solid rgba(232,28,42,0.14)', borderRadius:3 }}>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-red)', marginBottom:4 }}>🔥 Key Rivalry</div>
                 <p style={{ fontSize:11, color:'#aaaacc', lineHeight:1.6, margin:0 }}>{(active as any).rivalry}</p>
               </div>
             )}
-
-            {/* Career Timeline */}
             {(active as any).timeline && (
               <div style={{ marginBottom:10 }}>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-muted)', marginBottom:6 }}>Career Timeline</div>
@@ -804,16 +879,10 @@ function PlayersTab() {
                 </div>
               </div>
             )}
-
-            {/* Style tags */}
-            <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginBottom:9 }}>
-              {active.tags.map(t=><span key={t} style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, textTransform:'uppercase', padding:'1px 6px', border:'1px solid var(--sf-border)', borderRadius:2, color:'var(--sf-muted)' }}>{t}</span>)}
-            </div>
-
-            {/* Results */}
+            <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginBottom:9 }}>{active.tags.map((t: string)=><span key={t} style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, textTransform:'uppercase', padding:'1px 6px', border:'1px solid var(--sf-border)', borderRadius:2, color:'var(--sf-muted)' }}>{t}</span>)}</div>
             <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-muted)', marginBottom:5 }}>Career Results</div>
             <div style={{ background:'var(--sf-dark3)', borderRadius:3, overflow:'hidden', marginBottom:8 }}>
-              {active.results.map((r,ri)=>(
+              {active.results.map((r: any,ri: number)=>(
                 <div key={ri} style={{ display:'grid', gridTemplateColumns:'90px 1fr auto auto', gap:7, padding:'6px 9px', borderBottom:ri<active.results.length-1?'1px solid var(--sf-border)':'none', alignItems:'center' }}>
                   <div style={{ fontFamily:'"Barlow Condensed"', fontSize:10, fontWeight:700, color:'#fff', textTransform:'uppercase' }}>{r.ev}</div>
                   <div style={{ fontSize:9, color:'var(--sf-muted)' }}>{r.char}</div>
@@ -833,22 +902,22 @@ function PlayersTab() {
 function ResultsTab() {
   const events = [
     { name:'Capcom Cup 12', meta:'Mar 11–15, 2026 · Ryogoku Kokugikan, Tokyo · 48 players', prize:'$1,282,000', url:'https://liquipedia.net/fighters/Street_Fighter_6/Tournaments', results:[
-      { pos:'1st', pc:'var(--sf-gold)', player:'Sahara',   char:'Ryu',    country:'🇯🇵', prize:'$350,000+', note:'' },
-      { pos:'2nd', pc:'#ccc',           player:'Kilzyou',  char:'TBC',    country:'🇯🇵', prize:'$120,000+', note:'' },
-      { pos:'Note',pc:'#888',           player:'Kawano on Akuma · Multiple Ryu in top 8 · Validates post-Elena Ryu', char:'', country:'', prize:'', note:'Liquipedia' },
-    ]},
+      { pos:'1st', pc:'var(--sf-gold)', player:'Sahara', char:'Ryu', country:'🇯🇵', prize:'$350,000+', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Kilzyou', char:'TBC', country:'🇯🇵', prize:'$120,000+', note:'' },
+      { pos:'Note', pc:'#888', player:'Kawano on Akuma · Multiple Ryu in top 8 · Validates post-Elena Ryu', char:'', country:'', prize:'', note:'Liquipedia' },
+    ] },
     { name:'EVO 2025', meta:'Aug 1–3, 2025 · Las Vegas · 8,541 entrants', prize:'Champion crowned', url:'https://www.start.gg/evo', results:[
       { pos:'1st', pc:'var(--sf-gold)', player:'MenaRD', char:'TBC', country:'🇩🇴', prize:'EVO Champion', note:'' },
-      { pos:'Info',pc:'#888',           player:'8,541 entrants · Daigo qualifies for EWC 2026 via SFL WC', char:'', country:'', prize:'', note:'start.gg' },
-    ]},
+      { pos:'Info', pc:'#888', player:'8,541 entrants · Daigo qualifies for EWC 2026 via SFL WC', char:'', country:'', prize:'', note:'start.gg' },
+    ] },
     { name:'EVO 2024', meta:'Jul 19–21, 2024 · Las Vegas · 10,240 entrants — SF6 record', prize:'Record entry', url:'https://www.start.gg/evo', results:[
       { pos:'1st', pc:'var(--sf-gold)', player:'Punk', char:'Luke', country:'🇺🇸', prize:'EVO Champion', note:'' },
-      { pos:'Info',pc:'#888',           player:'10,240 entrants · Largest SF6 EVO bracket in history', char:'', country:'', prize:'', note:'start.gg' },
-    ]},
+      { pos:'Info', pc:'#888', player:'10,240 entrants · Largest SF6 EVO bracket in history', char:'', country:'', prize:'', note:'start.gg' },
+    ] },
     { name:'EVO 2023 — SF6 World Premiere', meta:'Aug 4–6, 2023 · Las Vegas · First EVO for Street Fighter 6', prize:'History made', url:'https://liquipedia.net/fighters/Street_Fighter_6/Tournaments', results:[
       { pos:'1st', pc:'var(--sf-gold)', player:'AngryBird', char:'Rashid', country:'🇦🇪', prize:'First SF6 EVO Champ', note:'' },
-      { pos:'Info',pc:'#888',           player:'9,221 entrants · First-ever SF6 EVO champion · Middle Eastern FGC on world stage', char:'', country:'', prize:'', note:'Full story' },
-    ]},
+      { pos:'Info', pc:'#888', player:'9,221 entrants · First-ever SF6 EVO champion · Middle Eastern FGC on world stage', char:'', country:'', prize:'', note:'Full story' },
+    ] },
   ]
   return (
     <div>
@@ -863,9 +932,7 @@ function ResultsTab() {
             <div style={{ fontFamily:'"Barlow Condensed"', fontSize:13, fontWeight:700, color:'var(--sf-gold)', flexShrink:0 }}>{ev.prize}</div>
           </div>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead>
-              <tr>{['Pos','Player','Main','','Prize',''].map((h,hi)=><th key={hi} style={{ textAlign:'left', padding:'6px 12px', fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-muted)', borderBottom:'1px solid var(--sf-border)' }}>{h}</th>)}</tr>
-            </thead>
+            <thead><tr>{['Pos','Player','Main','','Prize',''].map((h,hi)=><th key={hi} style={{ textAlign:'left', padding:'6px 12px', fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-muted)', borderBottom:'1px solid var(--sf-border)' }}>{h}</th>)}</tr></thead>
             <tbody>
               {ev.results.map((r,ri)=>(
                 <tr key={ri}>
@@ -874,7 +941,7 @@ function ResultsTab() {
                   <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none', fontSize:10, color:'var(--sf-muted)' }}>{r.char}</td>
                   <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none', fontSize:13 }}>{r.country}</td>
                   <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none' }}><span style={{ fontFamily:'"Barlow Condensed"', fontSize:11, fontWeight:700, color:'var(--sf-gold)' }}>{r.prize}</span></td>
-                  <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none' }}>{r.note&&<a href={ev.url} target="_blank" rel="noopener" style={{ fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, textTransform:'uppercase', color:'var(--sf-accent)', textDecoration:'none' }}>{r.note} ↗</a>}</td>
+                  <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none' }}>{r.note && <a href={ev.url} target="_blank" rel="noopener" style={{ fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, textTransform:'uppercase', color:'var(--sf-accent)', textDecoration:'none' }}>{r.note} ↗</a>}</td>
                 </tr>
               ))}
             </tbody>
