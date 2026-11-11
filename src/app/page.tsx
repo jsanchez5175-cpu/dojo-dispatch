@@ -10,6 +10,7 @@ import FrameFlashcards from '@/components/FrameFlashcards'
 import VoiceDebrief from '@/components/VoiceDebrief'
 import GhostRival from '@/components/GhostRival'
 import CommunityTierList from '@/components/CommunityTierList'
+import DojoLegend from '@/components/DojoLegend'
 import { initBilling, isPro as checkProStatus, buyPro, restorePro, billingLive } from '@/lib/revenuecat'
 
 type TabId = 'newsletter' | 'roster' | 'sensei' | 'climb' | 'punish' | 'challenger' | 'rivals' | 'lab' | 'flashcards' | 'debrief' | 'ghost' | 'tierlist' | 'meta' | 'predictor' | 'quiz' | 'events' | 'players' | 'results'
@@ -215,6 +216,7 @@ export default function HomePage() {
         {active==='players'    && <PlayersTab />}
         {active==='results'    && <ResultsTab />}
       </main>
+      <DojoLegend />
     </div>
   )
 }
