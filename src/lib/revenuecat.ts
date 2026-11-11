@@ -16,6 +16,9 @@ import { Purchases, LOG_LEVEL } from '@revenuecat/purchases-capacitor'
 const RC_ANDROID_KEY = 'goog_REPLACE_WITH_YOUR_KEY'   // RevenueCat public key — safe to ship
 const ENTITLEMENT = 'pro'
 
+/** true once a real RevenueCat key is in place — the paywall closes only then */
+export function billingLive(): boolean { return !/REPLACE/.test(RC_ANDROID_KEY) }
+
 let ready = false
 export async function initBilling() {
   if (ready) return

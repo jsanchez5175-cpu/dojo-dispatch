@@ -10,7 +10,7 @@ import FrameFlashcards from '@/components/FrameFlashcards'
 import VoiceDebrief from '@/components/VoiceDebrief'
 import GhostRival from '@/components/GhostRival'
 import CommunityTierList from '@/components/CommunityTierList'
-import { initBilling, isPro as checkProStatus, buyPro } from '@/lib/revenuecat'
+import { initBilling, isPro as checkProStatus, buyPro, restorePro, billingLive } from '@/lib/revenuecat'
 
 type TabId = 'newsletter' | 'roster' | 'sensei' | 'climb' | 'punish' | 'challenger' | 'rivals' | 'lab' | 'flashcards' | 'debrief' | 'ghost' | 'tierlist' | 'meta' | 'predictor' | 'quiz' | 'events' | 'players' | 'results'
 
@@ -339,7 +339,10 @@ function RosterTab() {
 }
 
 function SenseiTab({ pendingPrompt, onConsumePrompt }: { pendingPrompt?: string | null; onConsumePrompt?: () => void }) {
-  const FREE_LIMIT = 5
+  // Fleet rule (Nov 2026): a welcome bundle, then the wall. The wall only closes once Dojo Pro is purchasable
+  // (RevenueCat key in place); until then the old five-a-day stays so nobody is locked out with no door.
+  const WALL = billingLive()
+  const FREE_LIMIT = WALL ? 10 : 5
   const [msgs, setMsgs] = useState([{ role:'assistant', content:'I am your AI Sensei. Ask me anything about SF6 — strategy, players, events, results, patch notes, meta or frame data.' }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
@@ -354,9 +357,12 @@ function SenseiTab({ pendingPrompt, onConsumePrompt }: { pendingPrompt?: string 
     checkProStatus().then(p => { if (p) setIsPro(true) })
     try {
       const today = new Date().toISOString().slice(0,10)
-      const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
-      if (saved.date === today) setUsedToday(saved.count || 0)
-      else { localStorage.setItem('senseiUsage', JSON.stringify({ date:today, count:0 })); setUsedToday(0) }
+      if (WALL) { setUsedToday(parseInt(localStorage.getItem('senseiWelcome') || '0', 10) || 0) }
+      else {
+        const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
+        if (saved.date === today) setUsedToday(saved.count || 0)
+        else { localStorage.setItem('senseiUsage', JSON.stringify({ date:today, count:0 })); setUsedToday(0) }
+      }
     } catch {}
   },[])
   useEffect(()=>{
@@ -364,6 +370,7 @@ function SenseiTab({ pendingPrompt, onConsumePrompt }: { pendingPrompt?: string 
   },[pendingPrompt])
   const bumpUsage = () => {
     try {
+      if (WALL) { const n = (parseInt(localStorage.getItem('senseiWelcome') || '0', 10) || 0) + 1; localStorage.setItem('senseiWelcome', String(n)); setUsedToday(n); return }
       const today = new Date().toISOString().slice(0,10)
       const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
       const count = (saved.date === today ? (saved.count || 0) : 0) + 1
@@ -386,6 +393,10 @@ function SenseiTab({ pendingPrompt, onConsumePrompt }: { pendingPrompt?: string 
       toast.error('Purchase unavailable — try again from the Dojo Dispatch Android app.')
     }
     setPurchasing(false)
+  }
+  const restore = async () => {
+    const ok = await restorePro()
+    if (ok) { setIsPro(true); setShowPaywall(false); toast.success('Dojo Pro restored') } else toast('No Dojo Pro purchase found on this Google account')
   }
   const send = async (text?: string) => {
     const msg = text || input.trim()
@@ -432,9 +443,10 @@ function SenseiTab({ pendingPrompt, onConsumePrompt }: { pendingPrompt?: string 
       </div>
       {showPaywall && (
         <div style={{ background:'rgba(245,166,35,0.05)', border:'1px solid rgba(245,166,35,0.25)', borderRadius:4, padding:16, marginBottom:12, textAlign:'center' }}>
-          <div style={{ fontFamily:'"Barlow Condensed"', fontSize:16, fontWeight:900, color:'var(--sf-gold)', textTransform:'uppercase', letterSpacing:1 }}>★ Daily Free Limit Reached</div>
-          <div style={{ fontSize:12, color:'var(--sf-muted)', margin:'6px 0 12px', lineHeight:1.5 }}>You&apos;ve used your {FREE_LIMIT} free Sensei questions today. Unlock <strong style={{ color:'#fff' }}>Dojo Pro</strong> for unlimited access — one-time $4.99.</div>
+          <div style={{ fontFamily:'"Barlow Condensed"', fontSize:16, fontWeight:900, color:'var(--sf-gold)', textTransform:'uppercase', letterSpacing:1 }}>{WALL ? '★ Your welcome questions are spent' : '★ Daily Free Limit Reached'}</div>
+          <div style={{ fontSize:12, color:'var(--sf-muted)', margin:'6px 0 12px', lineHeight:1.5 }}>{WALL ? `That was the welcome: ${FREE_LIMIT} questions on the house. Sensei costs the dojo every time he answers.` : `You've used your ${FREE_LIMIT} free Sensei questions today.`} Unlock <strong style={{ color:'#fff' }}>Dojo Pro</strong> for unlimited access — one-time $4.99.</div>
           <button onClick={unlockPro} disabled={purchasing} style={{ padding:'9px 22px', background:'var(--sf-gold)', color:'#1a1a1a', border:'none', borderRadius:3, fontFamily:'"Barlow Condensed"', fontSize:14, fontWeight:900, letterSpacing:1, textTransform:'uppercase', cursor:purchasing?'default':'pointer', opacity:purchasing?0.6:1 }}>{purchasing ? 'Processing…' : 'Unlock Dojo Pro · $4.99'}</button>
+          <div style={{ marginTop:8 }}><button onClick={restore} style={{ background:'none', border:'none', color:'var(--sf-muted)', fontSize:11, textDecoration:'underline', cursor:'pointer' }}>Already bought Dojo Pro? Restore</button></div>
         </div>
       )}
       <div style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, overflow:'hidden' }}>
