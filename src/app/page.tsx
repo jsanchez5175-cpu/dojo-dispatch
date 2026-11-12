@@ -1,12 +1,33 @@
 'use client'
 import { useState, useRef, useEffect } from 'react'
+import toast from 'react-hot-toast'
+import TheClimb from '@/components/TheClimb'
+import PunishFinder from '@/components/PunishFinder'
+import CharacterDossier from '@/components/CharacterDossier'
+import RivalRadar from '@/components/RivalRadar'
+import LabPlaylist from '@/components/LabPlaylist'
+import FrameFlashcards from '@/components/FrameFlashcards'
+import VoiceDebrief from '@/components/VoiceDebrief'
+import GhostRival from '@/components/GhostRival'
+import CommunityTierList from '@/components/CommunityTierList'
+import DojoLegend from '@/components/DojoLegend'
+import { initBilling, isPro as checkProStatus, buyPro, restorePro, billingLive } from '@/lib/revenuecat'
 
-type TabId = 'newsletter' | 'roster' | 'sensei' | 'meta' | 'predictor' | 'quiz' | 'events' | 'players' | 'results'
+type TabId = 'newsletter' | 'roster' | 'sensei' | 'climb' | 'punish' | 'challenger' | 'rivals' | 'lab' | 'flashcards' | 'debrief' | 'ghost' | 'tierlist' | 'meta' | 'predictor' | 'quiz' | 'events' | 'players' | 'results'
 
 const TABS = [
   { id: 'newsletter', label: 'Newsletter',  icon: 'ti-news' },
   { id: 'roster',     label: 'Roster',      icon: 'ti-shield' },
   { id: 'sensei',     label: 'AI Sensei',   icon: 'ti-torii' },
+  { id: 'climb',      label: 'The Climb',   icon: 'ti-trending-up' },
+  { id: 'punish',     label: 'Punish Finder', icon: 'ti-target' },
+  { id: 'challenger', label: 'New Challenger', icon: 'ti-user-plus' },
+  { id: 'rivals',     label: 'Rival Radar', icon: 'ti-radar-2' },
+  { id: 'lab',        label: 'Lab Playlist', icon: 'ti-playlist' },
+  { id: 'flashcards', label: 'Flashcards',  icon: 'ti-cards' },
+  { id: 'debrief',    label: 'Voice Debrief', icon: 'ti-microphone' },
+  { id: 'ghost',      label: 'Ghost Rival', icon: 'ti-ghost' },
+  { id: 'tierlist',   label: 'Tier List',   icon: 'ti-stack' },
   { id: 'meta',       label: 'Meta',        icon: 'ti-flame' },
   { id: 'predictor',  label: 'Predictor',   icon: 'ti-bolt' },
   { id: 'quiz',       label: 'Daily Quiz',  icon: 'ti-brain' },
@@ -43,6 +64,11 @@ const FIGHTERS = [
   { id:'mai',      name:'Mai',       type:'Rush-down',    tier:'A', color:'#CC2244', difficulty:'Intermediate',stats:{power:76,speed:88,range:72,defense:66,combo:84,drive:86}, tags:['SNK','Fan','Kunoichi'],            profile:'SNK kunoichi as SF6 DLC. Fan projectiles and aerial mobility create unique pressure angles.', lore:'Shiranui school kunoichi and SNK fan favorite. Mai Shiranui joins SF6 as premium DLC alongside Terry. Her fan projectiles and aerial combat style bring a unique pressure angle not seen in the base roster.', s3:'Brand new as Year 2 DLC. A-tier with strong air-to-air and fan pressure.', topPlayers:'Gaining traction on regional circuits — watch for Mai specialists', combo:'Kachousen fan, DR, j.HP, cr.HP xx SA2', strengths:['Fan pressure','Air mobility','Mix-up angles'], weaknesses:['Needs practice','Resource dependent','Different from SF chars'] },
   { id:'mbison',   name:'M. Bison',  type:'Rush-down',    tier:'B', color:'#330088', difficulty:'Intermediate',stats:{power:86,speed:76,range:70,defense:74,combo:82,drive:80}, tags:['Psycho Power','Dictator','Return'], profile:'The dictator returns. April 2026 fixed the Psycho Mine bug. Classic Bison pressure with modern tools.', lore:'The Shadaloo Dictator returns. M. Bison uses Psycho Power in its purest destructive form. His Psycho Crusher and Scissor Kicks have terrified players since SF2. His return in SF6 has reignited his legacy.', s3:'Psycho Mine Drive Reversal bug fixed April 15, 2026. Pressure options remain strong. B-tier with classic fundamentals.', topPlayers:'Multiple Bison specialists returning now that he\'s back on the roster', combo:'Psycho Mine setup, DR, cr.HP xx Psycho Crusher SA2', strengths:['Strong pressure','Psycho Power tools','Classic fundamentals'], weaknesses:['Bug nerfed April patch','Corner dependent','Needs reads'] },
   { id:'sagat',    name:'Sagat',     type:'Zoner',        tier:'B', color:'#8B5E3C', difficulty:'Intermediate',stats:{power:88,speed:58,range:86,defense:80,combo:70,drive:74}, tags:['Tiger Shot','Muay Thai','Emperor'], profile:'The Muay Thai Emperor. Tiger Shot walls and Tiger Uppercut anti-air — fundamentals monster.', lore:'The Muay Thai Emperor and former SF1 final boss. Sagat lost his eye to Ryu\'s Shoryuken and carries that scar forever. He fights with brutal Tiger Shots and Tiger Uppercuts that define fundamental fighting game play.', s3:'Tiger Shot properties adjusted. Tiger Uppercut anti-air refined. B-tier as a fundamentals monster for patient players.', topPlayers:'Sagat specialists exist across all regions — historically popular in Thailand and Japan', combo:'Tiger Shot wall, walk forward, cr.HP xx Tiger Uppercut SA1', strengths:['Tiger Shot zoning','Elite anti-air','High damage'], weaknesses:['Slow movement','Charge mechanic','Predictable gameplan'] },
+  { id:'ingrid',   name:'Ingrid',    type:'Mix-up',       tier:'C', color:'#D4A017', difficulty:'Intermediate',stats:{power:70,speed:80,range:72,defense:62,combo:78,drive:80}, tags:['Year 3','Sun Goddess','Mobility','Install'], profile:'Year 3\'s final drop (May 28, 2026) and the last World Tour character. Sun Shot zoning into acrobatic mix-up, with a power-up install to close rounds. Early data — verify her exact SF6 kit in training mode before trusting any number here.', lore:'The Eternal Goddess of the sun, worshipped for centuries in a hidden valley. Ingrid fights to keep the balance between order and chaos, wielding solar power passed through her bloodline. Her return brings classic teleport mix-ups reimagined for SF6\'s Drive system.', s3:'Added mid Season 3 as the newest DLC drop. Dossier is unverified — the community is still mapping her frame data and true tier placement.', topPlayers:'Still being discovered — first Ingrid specialists will emerge at Combo Breaker and EVO 2026.', combo:'Sun Shot confirm, DR, cr.HP xx install cancel (verify in training mode)', strengths:['Sun Shot zoning','Mobility mix-ups','Install pressure window'], weaknesses:['Unproven tier placement','Install has a clock','Data still unverified'] },
+  { id:'cviper',   name:'C. Viper',  type:'Rush-down',    tier:'A', color:'#B22222', difficulty:'Expert',      stats:{power:80,speed:84,range:66,defense:64,combo:92,drive:82}, tags:['Year 3','Seismo','Burn Kick','Feint'], profile:'Year 3\'s second drop (Oct 15, 2025). Seismic Hammer, Thunder Knuckle feints and Burn Kick high-jump cancels — the highest execution ceiling on the roster. Big Bird\'s pick in SFL EMEAA; Tachikawa took 2nd at Evo France with her.', lore:'A single mother and S.I.N. agent whose battle suit channels electricity and fire. She fights for a paycheck and for her daughter, and never for the company.', s3:'Added Oct 15, 2025. Modern-control high-jump-cancel exploit on uncancelable normals fixed Oct 13, 2026.', topPlayers:'Big Bird (RED DUNES), Tachikawa (Crazy Raccoon)', combo:'cr.MP xx Thunder Knuckle feint, st.HP xx Seismic Hammer, Burn Kick', strengths:['Execution ceiling','Feint pressure','Air mobility'], weaknesses:['Execution tax','Low defense','Meter hungry'] },
+  { id:'elena',    name:'Elena',     type:'Mix-up',       tier:'A', color:'#8A5A2B', difficulty:'Intermediate',stats:{power:72,speed:86,range:80,defense:70,combo:76,drive:78}, tags:['Year 2','Capoeira','Healing','Range'], profile:'Year 2\'s last fighter (Jun 4, 2025). Long-limbed capoeira, Healing to steal rounds, and a mid-range game that the Tokido–Mago–Gachikun list put at S in Season 4. Dogura\'s Elena made Evo 2026 and Evo France top 8.', lore:'A Kenyan princess who dances before she fights and treats every opponent as a friend she has not met yet. Her capoeira is a conversation.', s3:'Season 4 (Aug 3, 2026): rated S by Tokido, Mago and Gachikun; unchanged enough to rise as rivals were trimmed.', topPlayers:'Dogura (Crazy Raccoon)', combo:'st.MK, cr.MP xx Scratch Wheel, Drive Rush st.HK', strengths:['Range','Healing','Mobility'], weaknesses:['Light damage','Needs reads','Big hurtbox'] },
+  { id:'yasmine',  name:'Yasmine',   type:'Rush-down',    tier:'C', color:'#1E9E8A', isNew:true, difficulty:'Intermediate',stats:{power:70,speed:88,range:68,defense:62,combo:80,drive:76}, tags:['Year 4','New','Eskrima','Karambit'], profile:'Year 4 opener (Aug 3, 2026, 350 FC / $7). A Filipino high-schooler with crescent karambits and Eskrima footwork. The community has her bottom-tier so far — Tokido, BoogardMG and Coosco all put her last — but she is on the Capcom Cup 13 key art.', lore:'A student from Manila who learned Eskrima from her grandmother and treats the stick drills as a dance. She fights fast, low, and never backs up.', s3:'Added Aug 3, 2026 with the Season 4 balance update. Consensus bottom tier as of October — expect buffs.', topPlayers:'No major top 8 yet', combo:'st.LP, st.MP xx karambit rekka, Drive Rush follow-up', strengths:['Speed','Low pokes','Pressure strings'], weaknesses:['Damage','Defense','Early meta'] },
+  { id:'arjun',    name:'Arjun',     type:'Grapple/Rush', tier:'B', color:'#C8781E', isNew:true, difficulty:'Intermediate',stats:{power:86,speed:70,range:72,defense:76,combo:72,drive:74}, tags:['Year 4','New','Bare-knuckle Yoga','Unranked'], profile:'Newest fighter (Oct 13, 2026). An ex-Indian police officer whose style is Bare-knuckle Yoga — strikes that stretch into throws. Three weeks after release Vxbao qualified for Capcom Cup 13 with him at World Warrior China. Tier lists have him unranked.', lore:'He left the force when the law stopped matching his conscience, and took the discipline with him. Every stance is a breath; every throw is an argument finished.', s3:'Added Oct 13, 2026. Not yet placed on the major tier lists; first CC13 qualifier Nov 1 (Vxbao).', topPlayers:'Vxbao (Falcons / AG) — WW China winner with Arjun', combo:'cr.MP, st.HP xx stretch-throw, Drive Rush st.MK', strengths:['Damage','Throw reach','Composure'], weaknesses:['Unknown matchups','Speed','Early tech'] },
 ]
 
 const MU: Record<string,Record<string,[number,number]>> = {
@@ -60,13 +86,13 @@ const MU: Record<string,Record<string,[number,number]>> = {
 const SC: Record<string,string> = {power:'#E24B4A',speed:'#F5A623',range:'#00D4FF',defense:'#00FF88',combo:'#D4537E',drive:'#7F77DD'}
 
 const QUIZ_DATA = [
-  {q:'Alex launched as SF6\'s third Year 3 character. When?',opts:['January 2026','March 17, 2026','May 2026','December 2025'],ans:1,exp:'Alex launched March 17, 2026 — the third Year 3 DLC fighter.'},
-  {q:'What was fixed for JP in the April 15, 2026 patch?',opts:['SA3 damage reduced','Departure: Shadow had unintended faster startup in certain cancels','Fireball removed','Drive Rush cost increased'],ans:1,exp:'Departure: Shadow had unintended 1-frame faster startup when canceled from st.MP, st.HK, cr.LK or cr.MK.'},
-  {q:'Drive Impact proximity block — what changed March 2026?',opts:['Removed','Moved from frame 3 to frame 17','Costs 2 bars now','Startup increased'],ans:1,exp:'Proximity block activation moved from frame 3 to frame 17, giving defenders a cleaner reaction window.'},
-  {q:'How many hits does Denjin Hadoken deal after June 2025 buff?',opts:['3 hits','5 hits','8 hits','12 hits'],ans:2,exp:'June 2025 buffed Denjin Hadoken from 5 to 8 hits with doubled projectile speed.'},
-  {q:'What does Drive Rush cancel add to frame advantage on hit?',opts:['Reduces by 2','Adds roughly +4 frames','Auto crumple','Full invincibility'],ans:1,exp:'Drive Rush cancel adds roughly +4 frames to hit advantage, enabling links like cr.MP xx DR, st.MP.'},
-  {q:'What is Capcom\'s direct prize contribution to CPT 2026 Premier winners?',opts:['$50,000','$10,000','$2,000','$0'],ans:2,exp:'Capcom contributes just $2,000 to Premier event winners — causing major FGC backlash in 2026.'},
-  {q:'Which CPT 2026 Premier is the first ever held in Australia?',opts:['EVO Japan','Combo Breaker','BAM 16 Melbourne','Capcom Cup 13'],ans:2,exp:'BAM 16 Melbourne starting July 10, 2026 is the first-ever Australian CPT Premier.'},
+  {q:'How many SF6 entrants did Evo Japan 2026 draw — a Guinness World Record?',opts:['2,414','5,083','7,168','10,240'],ans:2,exp:'7,168 entrants — the largest fighting-game bracket ever recorded, beating Evo 2023\'s 7,083. Yamaguchi (Mai) won it over Punk.'},
+  {q:'Who won Evo 2026 in Las Vegas, and with what?',opts:['Punk · Cammy','MenaRD · Blanka','Tokido · JP','Sahara · Ed'],ans:1,exp:'MenaRD beat Shigematsu in a Blanka mirror — the first mirror grand final in SF6 Evo history — for his fourth Evo title in three years.'},
+  {q:'Who is the youngest Esports World Cup champion ever?',opts:['Hinao','Craime','Yamaguchi','Blaz'],ans:1,exp:'Craime, a 15-year-old from Chile, won EWC 2026 (Ryu) over Hibiki\'s Lily, beating MenaRD and Yamaguchi on the way — $250,000.'},
+  {q:'Which Year 4 fighter launched on August 3, 2026?',opts:['Arjun','Tifa Lockhart','Yasmine','Bosch'],ans:2,exp:'Yasmine — crescent karambits and Eskrima — opened Year 4 with the Season 4 balance update. Arjun followed Oct 13; Tifa and Bosch are due in 2027.'},
+  {q:'Capcom Cup 12 paid its winner how much?',opts:['$250,000','$500,000','$1,000,000','$2,100,000'],ans:2,exp:'Sahara (Good 8 Squad, Ed) beat Kilzyou 5-1 for $1,000,000 — and Capcom Cup 13 keeps the million for the third straight year.'},
+  {q:'In the Season 4 patch, Jamie\'s Full Moon Kick damage went from 1000 to…',opts:['800','1200','1500','2000'],ans:3,exp:'2000 — doubled, one of the headline Season 4 buffs alongside Cammy\'s OD Quick Spin Knuckle going from -2 to +3 on block.'},
+  {q:'Where and when is Capcom Cup 13?',opts:['Las Vegas · Feb 2027','Ryogoku Kokugikan, Tokyo · Mar 10–14, 2027','Riyadh · Jul 2027','Paris · Mar 2027'],ans:1,exp:'The Kokugikan again — 48 players, $1M first prize, with the SFL World Championship on Mar 12 and 14.'},
   {q:'Who won EVO 2023 — the first ever SF6 EVO championship?',opts:['Punk','MenaRD','Tokido','AngryBird'],ans:3,exp:'AngryBird won EVO 2023 with Rashid, becoming the first-ever SF6 EVO champion.'},
 ]
 
@@ -79,6 +105,10 @@ const PLAYER_PORTRAITS: Record<string,string> = {
   justinwong:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="jwg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#001a33"/><stop offset="100%" stop-color="#002a44"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#jwg)"/><circle cx="60" cy="40" r="22" fill="#c8a882"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#001a33"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#001a33"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#001a33"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#0066cc"/><circle cx="60" cy="30" r="10" fill="#c8a882"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#c8a882"/><rect x="12" y="78" width="18" height="6" rx="2" fill="#c8a882"/><rect x="90" y="78" width="18" height="6" rx="2" fill="#c8a882"/><rect x="48" y="0" width="24" height="5" rx="2" fill="#0066cc" opacity="0.6"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#0066cc">NEW YORK · 8x EVO</text></svg>`,
   angrybird:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="abg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#001a0a"/><stop offset="100%" stop-color="#002a14"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#abg)"/><circle cx="60" cy="40" r="22" fill="#8B5E3C"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#001a0a"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#001a0a"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#001a0a"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#00aa44"/><circle cx="60" cy="30" r="10" fill="#8B5E3C"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#8B5E3C"/><rect x="16" y="100" width="88" height="14" rx="3" fill="#00aa44"/><text x="60" y="111" text-anchor="middle" font-family="Arial" font-size="8" font-weight="900" fill="#fff">EVO 2023 CHAMPION</text></svg>`,
   nuckledu:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="ndg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#0a1422"/><stop offset="100%" stop-color="#1a2a3a"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#ndg)"/><circle cx="60" cy="40" r="22" fill="#d4a574"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#1a3a1a"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#1a3a1a"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#1a3a1a"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#4a7a4a"/><circle cx="60" cy="30" r="10" fill="#d4a574"/><rect x="38" y="17" width="44" height="14" rx="3" fill="#d4a574"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#4a7a4a">EVO 2016 CHAMP</text></svg>`,
+  sahara:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="shg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a1400"/><stop offset="100%" stop-color="#2a2200"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#shg)"/><circle cx="60" cy="40" r="22" fill="#c8a070"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#1a1400"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#1a1400"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#1a1400"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#F5A623"/><circle cx="60" cy="30" r="10" fill="#c8a070"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#c8a070"/><rect x="16" y="100" width="88" height="14" rx="3" fill="#F5A623"/><text x="60" y="111" text-anchor="middle" font-family="Arial" font-size="8" font-weight="900" fill="#000">CC12 CHAMPION</text></svg>`,
+  kawano:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="kwg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#001420"/><stop offset="100%" stop-color="#002438"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#kwg)"/><circle cx="60" cy="40" r="22" fill="#c8a070"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#001420"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#001420"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#001420"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#00D4FF"/><circle cx="60" cy="30" r="10" fill="#c8a070"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#c8a070"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#00D4FF">CC12 TOP 8 · JAPAN</text></svg>`,
+  nemo:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="nmg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a0000"/><stop offset="100%" stop-color="#2a0a0a"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#nmg)"/><circle cx="60" cy="40" r="22" fill="#d4a882"/><rect x="24" y="58" width="72" height="44" rx="8" fill="#1a0000"/><rect x="10" y="62" width="20" height="32" rx="6" fill="#1a0000"/><rect x="90" y="62" width="20" height="32" rx="6" fill="#1a0000"/><rect x="28" y="59" width="64" height="7" rx="2" fill="#880000"/><circle cx="60" cy="30" r="10" fill="#d4a882"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#d4a882"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#cc4444">GRAPPLER · KOREA</text></svg>`,
+  fuudo:`<svg viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="fdg" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#1a0f00"/><stop offset="100%" stop-color="#2a1a00"/></linearGradient></defs><rect width="120" height="120" rx="4" fill="url(#fdg)"/><circle cx="60" cy="40" r="22" fill="#c8a070"/><rect x="26" y="58" width="68" height="44" rx="8" fill="#1a0f00"/><rect x="12" y="62" width="18" height="32" rx="6" fill="#1a0f00"/><rect x="90" y="62" width="18" height="32" rx="6" fill="#1a0f00"/><rect x="30" y="59" width="60" height="7" rx="2" fill="#CC6600"/><circle cx="60" cy="30" r="10" fill="#c8a070"/><rect x="40" y="18" width="40" height="12" rx="3" fill="#c8a070"/><text x="60" y="113" text-anchor="middle" font-family="Arial" font-size="8" font-weight="700" fill="#CC6600">DHALSIM VETERAN</text></svg>`,
 }
 
 const AVT: Record<string,string> = {
@@ -109,6 +139,7 @@ const AVT: Record<string,string> = {
   mai:`<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="36" fill="#1a0010"/><ellipse cx="36" cy="21" rx="9" ry="10" fill="#d4a882"/><rect x="21" y="30" width="30" height="20" rx="5" fill="#cc2244"/><rect x="17" y="30" width="9" height="15" rx="4" fill="#cc2244"/><rect x="46" y="30" width="9" height="15" rx="4" fill="#cc2244"/><circle cx="36" cy="13" r="5" fill="#d4a882"/><circle cx="52" cy="10" r="5" fill="#ff6688" opacity="0.6"/></svg>`,
   mbison:`<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="36" fill="#0a0022"/><ellipse cx="36" cy="21" rx="9" ry="10" fill="#c8c0d8"/><rect x="20" y="30" width="32" height="22" rx="5" fill="#220044"/><rect x="16" y="30" width="9" height="16" rx="4" fill="#220044"/><rect x="47" y="30" width="9" height="16" rx="4" fill="#220044"/><circle cx="36" cy="13" r="5" fill="#c8c0d8"/></svg>`,
   sagat:`<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="36" fill="#0a0800"/><ellipse cx="36" cy="19" rx="12" ry="12" fill="#8B5E3C"/><rect x="14" y="28" width="44" height="28" rx="5" fill="#cc4400" opacity="0.8"/><rect x="6" y="32" width="14" height="22" rx="5" fill="#cc4400" opacity="0.8"/><rect x="52" y="32" width="14" height="22" rx="5" fill="#cc4400" opacity="0.8"/><circle cx="36" cy="10" r="5" fill="#8B5E3C"/></svg>`,
+  ingrid:`<svg viewBox="0 0 72 72" xmlns="http://www.w3.org/2000/svg"><circle cx="36" cy="36" r="36" fill="#1a1400"/><ellipse cx="36" cy="21" rx="9" ry="10" fill="#d4a574"/><rect x="21" y="30" width="30" height="20" rx="5" fill="#D4A017"/><rect x="17" y="30" width="9" height="16" rx="4" fill="#D4A017"/><rect x="46" y="30" width="9" height="16" rx="4" fill="#D4A017"/><circle cx="36" cy="13" r="6" fill="#F5A623" opacity="0.7"/><circle cx="36" cy="13" r="3" fill="#F5A623"/></svg>`,
 }
 
 function SL({ children }: { children: React.ReactNode }) {
@@ -124,6 +155,8 @@ function ST({ children }: { children: React.ReactNode }) {
 }
 export default function HomePage() {
   const [active, setActive] = useState<TabId>('newsletter')
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null)
+  const askSensei = (prompt: string) => { setPendingPrompt(prompt); setActive('sensei') }
   return (
     <div style={{ minHeight:'100vh', background:'var(--sf-dark)' }}>
       <header style={{ background:'var(--sf-dark2)', borderBottom:'2px solid var(--sf-red)' }}>
@@ -143,7 +176,7 @@ export default function HomePage() {
                 <p style={{ fontFamily:'"Barlow Condensed"', fontSize:11, color:'var(--sf-muted)', letterSpacing:'1.5px', textTransform:'uppercase', marginTop:4 }}>Newsletter · Roster · Meta · Events · AI Sensei · Results</p>
               </div>
               <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
-                {[{l:'● Sensei Online',c:'var(--sf-green)',bg:'rgba(0,255,136,0.07)'},{l:'Issue #14 · May 2026',c:'var(--sf-red)',bg:'rgba(232,28,42,0.07)'},{l:'CPT 2026 · $2.1M',c:'var(--sf-gold)',bg:'rgba(245,166,35,0.07)'},{l:'EWC Jul 28 · $1M',c:'var(--sf-accent)',bg:'rgba(0,212,255,0.07)'}].map(p=>(
+                {[{l:'● Sensei Online',c:'var(--sf-green)',bg:'rgba(0,255,136,0.07)'},{l:'Issue #15 · Nov 2026',c:'var(--sf-red)',bg:'rgba(232,28,42,0.07)'},{l:'Capcom Cup 13 · Mar 10–14',c:'var(--sf-gold)',bg:'rgba(245,166,35,0.07)'},{l:'Season 4 · 32 fighters',c:'var(--sf-accent)',bg:'rgba(0,212,255,0.07)'}].map(p=>(
                   <span key={p.l} style={{ fontFamily:'"Barlow Condensed"', fontSize:10, fontWeight:700, letterSpacing:1, textTransform:'uppercase', padding:'3px 9px', borderRadius:2, border:`1px solid ${p.c}`, color:p.c, background:p.bg }}>{p.l}</span>
                 ))}
               </div>
@@ -170,7 +203,16 @@ export default function HomePage() {
       <main style={{ maxWidth:1100, margin:'0 auto', padding:'20px 16px' }}>
         {active==='newsletter' && <NewsletterTab />}
         {active==='roster'     && <RosterTab />}
-        {active==='sensei'     && <SenseiTab />}
+        {active==='sensei'     && <SenseiTab pendingPrompt={pendingPrompt} onConsumePrompt={()=>setPendingPrompt(null)} />}
+        {active==='climb'      && <TheClimb />}
+        {active==='punish'     && <PunishFinder onAskSensei={askSensei} />}
+        {active==='challenger' && <CharacterDossier onAskSensei={askSensei} />}
+        {active==='rivals'     && <RivalRadar onAskSensei={askSensei} />}
+        {active==='lab'        && <LabPlaylist onAskSensei={askSensei} />}
+        {active==='flashcards' && <FrameFlashcards />}
+        {active==='debrief'    && <VoiceDebrief />}
+        {active==='ghost'      && <GhostRival onAskSensei={askSensei} />}
+        {active==='tierlist'   && <CommunityTierList />}
         {active==='meta'       && <MetaTab />}
         {active==='predictor'  && <PredictorTab />}
         {active==='quiz'       && <QuizTab />}
@@ -178,18 +220,20 @@ export default function HomePage() {
         {active==='players'    && <PlayersTab />}
         {active==='results'    && <ResultsTab />}
       </main>
+      <DojoLegend />
     </div>
   )
 }
 
 function NewsletterTab() {
   const articles = [
-    { cat:'Event Preview', cc:'var(--sf-red)', title:'Combo Breaker 2026: A Wide-Open Throne', sub:'May 22–24 · Schaumburg, IL · $19,710 SF6 pool · 2 EWC spots', body:'With Sahara freshly crowned as CC12 champion and Season 3 still finding its shape, Combo Breaker 2026 is the most wide-open premier of the year. Nobody walks in as a clear favourite.', hl:'What\'s at stake: $19,710 SF6 prize money · 2 direct EWC spots · CPT points for CC13 · First real test of Alex in a premier bracket', date:'May 22–24' },
-    { cat:'Hot Take', cc:'#ff6666', title:"Capcom's $2,000 Premier: The FGC Is Right to Be Angry", sub:'CPT 2026 prize structure has players furious — the numbers back them up', body:"CPT 2026 runs a $2.1M total prize pool. Then you see Capcom's contribution to Premiers like Combo Breaker: $2,000 to the winner. EVO 2026 gets zero Capcom prize money.", hl:'Reality: $19,710 pool at Combo Breaker — mostly TO-funded · Capcom adds $2,000 · EVO 2026: $0 from Capcom · $1M+ locked in CC13 Japan 2027', date:'🔥 Hot topic' },
-    { cat:'Season Preview', cc:'var(--sf-gold)', title:'EVO Las Vegas 2026: Where Legacies Are Made', sub:'June 26–28 · Las Vegas · The world\'s biggest FG event', body:'One month after Combo Breaker, the entire FGC hits Las Vegas. EVO 2024 drew 10,240 SF6 entrants — the record. Punk won 2024. MenaRD took 2025. Who becomes EVO 2026 champion?', hl:'EVO 2026: Most prestigious SF6 title outside CC · 2 EWC qualification spots · DLC announcement rumoured from Capcom', date:'Jun 26–28' },
-    { cat:'Meta Report', cc:'var(--sf-accent)', title:"Season 3: EndingWalker's 10-0, Tokido Goes JP", sub:'The defining storylines of the early Season 3 metagame', body:"Season 3 is six weeks in. Alex sits at B-tier with high upside. The headline is EndingWalker going 10-0 in the SFL with Ryu. After Elena update buffs he's proving the character is elite.", hl:'Top storylines: EndingWalker 10-0 Ryu — MOUZ top seed · Tokido switches to JP for Season 3 · Kawano on Akuma at CC12 · Multiple Ryu in CC12 top 8', date:'Meta update' },
-    { cat:'FGC Legends', cc:'var(--sf-purple)', title:'Justin Wong & Daigo: The GOATs Are Still Competing', sub:'Two of the greatest ever — still showing up in Season 3', body:"Justin Wong has been competing since SF2 and is still posting results. Daigo Umehara — The Beast — qualified for EWC 2026 via the SFL World Championship at age 42. Longevity is the ultimate flex.", hl:'Daigo qualified for EWC 2026 Riyadh $1M event via SFL WC · Justin Wong still competing after 30+ years · Combined 40+ years of top-level FGC experience', date:'Legends feature' },
-    { cat:'Community Corner', cc:'var(--sf-green)', title:'From Casual to Competitor: Your FGC Roadmap', sub:'How to go from SF6 online ranked to standing on stage', body:'The FGC is one of the most welcoming competitive communities in gaming. The jump from online to offline is real — but nothing accelerates improvement faster.', hl:'Entry points: Find locals at start.gg · SF6 subreddit & Discord · CPT World Warrior qualifiers — open to everyone · Follow EventHubs & Liquipedia', date:'Community' },
+    { cat:'Road to Capcom Cup', cc:'var(--sf-red)', title:'Capcom Cup 13: 48 Seats, One Million Dollars, March 10–14', sub:'Ryogoku Kokugikan, Tokyo · SFL World Championship Mar 12 & 14 · tickets on sale', body:'The Premiers are done — Evo France was the last — and the field is filling: Sahara defends, every Premier winner is in, the eight points qualifiers are locked (Punk, Higuchi, Kobayan, Micky, Kilzyou, Cosa, Tantanmen, Tachikawa), and World Warrior finals run through December 13.', hl:'$1,000,000 to the winner for the third straight year · double-elim groups then a 16-player single-elim final · SFL WC: RED DUNES vs 2GAME vs the SFL JP champion', date:'Mar 10–14' },
+    { cat:'Hot Take', cc:'#ff6666', title:'The Kids Are Coming: Craime, Blaz, Hinao', sub:'A 15-year-old won the Esports World Cup. That is the story of 2026.', body:'Craime (Chile, 15) beat MenaRD and Yamaguchi back to back and then Hibiki in the final for $250,000 — the youngest EWC champion ever. Blaz took third at Capcom Cup 12 and won SFL Americas with 2GAME. Hinao went 2nd–1st–3rd–5th across Combo Breaker, BAM, EWC and Evo France in his first full year.', hl:'The old guard still wins — Tokido took CEO, MenaRD took Evo — but the average age of a top 8 just dropped five years', date:'🔥 Hot topic' },
+    { cat:'Event Report', cc:'var(--sf-gold)', title:'Evo 2026: MenaRD, Four Titles in Three Years', sub:'June 26–28 · Las Vegas · 2,414 entrants · first Blanka mirror grand final', body:'Shigematsu took the first set 3-1 and reset the bracket; MenaRD answered 3-0. Evo Japan 2024, Evo Japan 2025, Vegas 2025, Vegas 2026 — nobody has done that. Shigematsu took the Capcom Cup 13 slot because MenaRD was already in from Blink Respawn.', hl:'Top 8: MenaRD, Shigematsu, Kilzyou, Craime, Tantanmen, Dogura, Zhen, CrossoverRD', date:'Jun 26–28' },
+    { cat:'Meta Report', cc:'var(--sf-accent)', title:"Season 4: Ryu Is the Strongest Character in the Game", sub:'Three months after the August 3 balance pass, the lists agree', body:"Coosco called it outright: Ryu barely changed while the field was trimmed, and he sits at the top of every list with Mai, Sagat, JP and Blanka. Yasmine opened Year 4 at the bottom of all three big lists; Arjun is unranked and already has a Capcom Cup qualifier.", hl:'Consensus S: Ryu · Mai · Sagat · JP · Blanka · Terry — bottom: Yasmine · E. Honda · Ingrid · Marisa · Lily', date:'Meta update' },
+    { cat:'League', cc:'var(--sf-purple)', title:'RED DUNES Three-Peat, 2GAME Takes the Americas', sub:'SFL EMEAA finals Oct 24 (London) · SFL Americas finals Nov 8 (Pasadena)', body:"Phenom, AngryBird, Big Bird and Juicy Joe beat GTW 70-30 for a third straight EMEAA title. In Pasadena, 2GAME (Shaka22, Brayan_Job, Lugabo, Blaz) ran over BANDITS 70-20. Japan is still in group stage: ZETA DIVISION leads S Division, RIDDLE ORDER leads F — playoffs Jan 10–11, grand final Feb 23.", hl:'All three league champions meet at the SFL World Championship in Tokyo, March 12 and 14', date:'Oct 24 · Nov 8' },
+    { cat:'Year 4', cc:'var(--sf-green)', title:'Yasmine, Arjun, Tifa, Bosch: The Year 4 Pass', sub:'Announced June 5 at Summer Game Fest', body:'Yasmine (Aug 3) and Arjun (Oct 13) are in. Tifa Lockhart — the first Final Fantasy guest, with Tetsuya Nomura signing off on her look — arrives early 2027; Bosch, World Tour\'s second protagonist, in spring. Ingrid was the last fighter added to World Tour.', hl:'Season 4 headline changes: Jamie Full Moon Kick 1000 → 2000 · Cammy OD Quick Spin +3 on block · Ken cr.MP 700 → 600 · throw-escape gauge halved', date:'Year 4' },
+    { cat:'Community Corner', cc:'var(--sf-green)', title:'From Casual to Competitor: Your FGC Roadmap', sub:'How to go from SF6 online ranked to standing on stage', body:'The FGC is one of the most welcoming competitive communities in gaming. The jump from online to offline is real — but nothing accelerates improvement faster. Log every session in The Climb; bring the replay to a local.', hl:'Entry points: Find locals at start.gg · SF6 subreddit & Discord · CPT World Warrior qualifiers in 25 regions · Evo Singapore Jan 15–17 if you can travel', date:'Community' },
   ]
   return (
     <div>
@@ -228,7 +272,7 @@ function RosterTab() {
   const fighter = FIGHTERS.find(f=>f.id===sel)
   return (
     <div>
-      <SL>Season 3 · 27 Characters · Tap to view</SL><ST>Roster</ST>
+      <SL>Season 4 · {FIGHTERS.length} Characters · Tap to view</SL><ST>Roster</ST>
       <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(95px,1fr))', gap:6, marginBottom:14 }}>
         {FIGHTERS.map(f=>(
           <div key={f.id} onClick={()=>setSel(sel===f.id?null:f.id)} style={{ background:'var(--sf-dark2)', border:`1px solid ${sel===f.id?'var(--sf-red)':'var(--sf-border)'}`, borderRadius:4, cursor:'pointer', overflow:'hidden', position:'relative', transition:'border-color 0.15s' }}>
@@ -300,27 +344,39 @@ function RosterTab() {
   )
 }
 
-function SenseiTab() {
-  const FREE_LIMIT = 5
+function SenseiTab({ pendingPrompt, onConsumePrompt }: { pendingPrompt?: string | null; onConsumePrompt?: () => void }) {
+  // Fleet rule (Nov 2026): a welcome bundle, then the wall. The wall only closes once Dojo Pro is purchasable
+  // (RevenueCat key in place); until then the old five-a-day stays so nobody is locked out with no door.
+  const WALL = billingLive()
+  const FREE_LIMIT = WALL ? 10 : 5
   const [msgs, setMsgs] = useState([{ role:'assistant', content:'I am your AI Sensei. Ask me anything about SF6 — strategy, players, events, results, patch notes, meta or frame data.' }])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [isPro, setIsPro] = useState(false)
+  const [purchasing, setPurchasing] = useState(false)
   const [usedToday, setUsedToday] = useState(0)
   const [showPaywall, setShowPaywall] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
   useEffect(()=>{ bottomRef.current?.scrollIntoView({ behavior:'smooth' }) },[msgs])
   useEffect(()=>{
+    initBilling()
+    checkProStatus().then(p => { if (p) setIsPro(true) })
     try {
-      if (localStorage.getItem('dojoPro') === 'true') setIsPro(true)
       const today = new Date().toISOString().slice(0,10)
-      const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
-      if (saved.date === today) setUsedToday(saved.count || 0)
-      else { localStorage.setItem('senseiUsage', JSON.stringify({ date:today, count:0 })); setUsedToday(0) }
+      if (WALL) { setUsedToday(parseInt(localStorage.getItem('senseiWelcome') || '0', 10) || 0) }
+      else {
+        const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
+        if (saved.date === today) setUsedToday(saved.count || 0)
+        else { localStorage.setItem('senseiUsage', JSON.stringify({ date:today, count:0 })); setUsedToday(0) }
+      }
     } catch {}
   },[])
+  useEffect(()=>{
+    if (pendingPrompt) { send(pendingPrompt); onConsumePrompt?.() }
+  },[pendingPrompt])
   const bumpUsage = () => {
     try {
+      if (WALL) { const n = (parseInt(localStorage.getItem('senseiWelcome') || '0', 10) || 0) + 1; localStorage.setItem('senseiWelcome', String(n)); setUsedToday(n); return }
       const today = new Date().toISOString().slice(0,10)
       const saved = JSON.parse(localStorage.getItem('senseiUsage') || '{}')
       const count = (saved.date === today ? (saved.count || 0) : 0) + 1
@@ -328,10 +384,25 @@ function SenseiTab() {
       setUsedToday(count)
     } catch {}
   }
-  const unlockPro = () => {
-    try { localStorage.setItem('dojoPro','true') } catch {}
-    setIsPro(true); setShowPaywall(false)
-    setMsgs(prev=>[...prev, { role:'assistant', content:'🥋 Dojo Pro unlocked — unlimited Sensei. Let\'s get to work.' }])
+  const unlockPro = async () => {
+    setPurchasing(true)
+    try {
+      const active = await buyPro()
+      if (active) {
+        setIsPro(true); setShowPaywall(false)
+        setMsgs(prev=>[...prev, { role:'assistant', content:'🥋 Dojo Pro unlocked — unlimited Sensei. Let\'s get to work.' }])
+        toast.success('Dojo Pro unlocked!')
+      } else {
+        toast('Purchase cancelled')
+      }
+    } catch {
+      toast.error('Purchase unavailable — try again from the Dojo Dispatch Android app.')
+    }
+    setPurchasing(false)
+  }
+  const restore = async () => {
+    const ok = await restorePro()
+    if (ok) { setIsPro(true); setShowPaywall(false); toast.success('Dojo Pro restored') } else toast('No Dojo Pro purchase found on this Google account')
   }
   const send = async (text?: string) => {
     const msg = text || input.trim()
@@ -351,7 +422,7 @@ function SenseiTab() {
     }
     setLoading(false)
   }
-  const quick = ['Combo Breaker 2026 preview','EndingWalker 10-0 Ryu','Daigo EWC 2026 qualification','Justin Wong career story','Best Season 3 rank pick','JP April 2026 patch','Punk vs MenaRD who wins EVO','How to escape burnout']
+  const quick = ['Capcom Cup 13 field','MenaRD four Evo titles','Craime EWC 2026 upset','Justin Wong career story','Best Season 4 rank pick','Arjun first impressions','JP April 2026 patch','Punk vs MenaRD who wins EVO','How to escape burnout']
   const remaining = Math.max(0, FREE_LIMIT - usedToday)
   return (
     <div>
@@ -378,16 +449,17 @@ function SenseiTab() {
       </div>
       {showPaywall && (
         <div style={{ background:'rgba(245,166,35,0.05)', border:'1px solid rgba(245,166,35,0.25)', borderRadius:4, padding:16, marginBottom:12, textAlign:'center' }}>
-          <div style={{ fontFamily:'"Barlow Condensed"', fontSize:16, fontWeight:900, color:'var(--sf-gold)', textTransform:'uppercase', letterSpacing:1 }}>★ Daily Free Limit Reached</div>
-          <div style={{ fontSize:12, color:'var(--sf-muted)', margin:'6px 0 12px', lineHeight:1.5 }}>You&apos;ve used your {FREE_LIMIT} free Sensei questions today. Unlock <strong style={{ color:'#fff' }}>Dojo Pro</strong> for unlimited access — one-time $4.99.</div>
-          <button onClick={unlockPro} style={{ padding:'9px 22px', background:'var(--sf-gold)', color:'#1a1a1a', border:'none', borderRadius:3, fontFamily:'"Barlow Condensed"', fontSize:14, fontWeight:900, letterSpacing:1, textTransform:'uppercase', cursor:'pointer' }}>Unlock Dojo Pro · $4.99</button>
+          <div style={{ fontFamily:'"Barlow Condensed"', fontSize:16, fontWeight:900, color:'var(--sf-gold)', textTransform:'uppercase', letterSpacing:1 }}>{WALL ? '★ Your welcome questions are spent' : '★ Daily Free Limit Reached'}</div>
+          <div style={{ fontSize:12, color:'var(--sf-muted)', margin:'6px 0 12px', lineHeight:1.5 }}>{WALL ? `That was the welcome: ${FREE_LIMIT} questions on the house. Sensei costs the dojo every time he answers.` : `You've used your ${FREE_LIMIT} free Sensei questions today.`} Unlock <strong style={{ color:'#fff' }}>Dojo Pro</strong> for unlimited access — one-time $4.99.</div>
+          <button onClick={unlockPro} disabled={purchasing} style={{ padding:'9px 22px', background:'var(--sf-gold)', color:'#1a1a1a', border:'none', borderRadius:3, fontFamily:'"Barlow Condensed"', fontSize:14, fontWeight:900, letterSpacing:1, textTransform:'uppercase', cursor:purchasing?'default':'pointer', opacity:purchasing?0.6:1 }}>{purchasing ? 'Processing…' : 'Unlock Dojo Pro · $4.99'}</button>
+          <div style={{ marginTop:8 }}><button onClick={restore} style={{ background:'none', border:'none', color:'var(--sf-muted)', fontSize:11, textDecoration:'underline', cursor:'pointer' }}>Already bought Dojo Pro? Restore</button></div>
         </div>
       )}
       <div style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, overflow:'hidden' }}>
         <div style={{ background:'var(--sf-dark3)', borderBottom:'1px solid var(--sf-border)', padding:'8px 12px', display:'flex', alignItems:'center', gap:7 }}>
           <div style={{ width:8, height:8, borderRadius:'50%', background:'var(--sf-green)' }} className="animate-blink"/>
           <span style={{ fontFamily:'"Barlow Condensed"', fontSize:11, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'#fff', flex:1 }}>AI Sensei</span>
-          <span style={{ fontFamily:'"Barlow Condensed"', fontSize:9, color:'var(--sf-muted)' }}>Live search · Season 3</span>
+          <span style={{ fontFamily:'"Barlow Condensed"', fontSize:9, color:'var(--sf-muted)' }}>Live search · Season 4</span>
         </div>
         <div style={{ padding:12, minHeight:160, maxHeight:400, overflowY:'auto', display:'flex', flexDirection:'column', gap:7 }}>
           {msgs.map((m,i)=><div key={i} style={{ padding:'8px 11px', borderRadius:3, fontSize:12, lineHeight:1.55, maxWidth:'90%', background:m.role==='user'?'rgba(232,28,42,0.1)':'var(--sf-dark3)', border:m.role==='user'?'1px solid rgba(232,28,42,0.2)':'1px solid var(--sf-border)', alignSelf:m.role==='user'?'flex-end':'flex-start', color:'var(--sf-text)' }}>{m.content}</div>)}
@@ -405,17 +477,19 @@ function SenseiTab() {
 
 function MetaTab() {
   const tiers = [
-    { label:'S', color:'var(--sf-gold)', bg:'rgba(245,166,35,0.1)', border:'rgba(245,166,35,0.22)', chars:['Luke','Akuma','Ken','Juri','Chun-Li'] },
-    { label:'A', color:'#bbb', bg:'rgba(170,170,170,0.06)', border:'rgba(170,170,170,0.16)', chars:['Ryu','Cammy','Ed','Rashid','Guile','Kimberly','Terry','Mai'] },
-    { label:'B', color:'#6699cc', bg:'rgba(102,153,204,0.06)', border:'rgba(102,153,204,0.16)', chars:['Manon','Marisa','Zangief','Blanka','E. Honda','Sagat','M. Bison','Alex ★'] },
-    { label:'C', color:'#556677', bg:'rgba(85,102,119,0.06)', border:'rgba(85,102,119,0.16)', chars:['JP','Dhalsim','Jamie','Dee Jay','AKI','Lily'] },
+    { label:'S', color:'var(--sf-gold)', bg:'rgba(245,166,35,0.1)', border:'rgba(245,166,35,0.22)', chars:['Ryu','Mai','Sagat','JP','Blanka','Terry'] },
+    { label:'A', color:'#bbb', bg:'rgba(170,170,170,0.06)', border:'rgba(170,170,170,0.16)', chars:['Luke','Elena','Guile','C. Viper','Jamie','M. Bison','Akuma'] },
+    { label:'B', color:'#6699cc', bg:'rgba(102,153,204,0.06)', border:'rgba(102,153,204,0.16)', chars:['Ken','Cammy','Ed','Rashid','Kimberly','Juri','Chun-Li','Dee Jay','Zangief','A.K.I.','Dhalsim','Alex','Arjun ★ (unranked)'] },
+    { label:'C', color:'#556677', bg:'rgba(85,102,119,0.06)', border:'rgba(85,102,119,0.16)', chars:['Manon','Lily','Marisa','Ingrid','E. Honda','Yasmine ★'] },
   ]
   const patches = [
-    { dot:'var(--sf-red)',    date:'Apr 15',  char:'JP',            move:'Departure: Shadow — startup fix',    desc:'Unintended 1-frame faster startup when canceled from st.MP, st.HK, cr.LK or cr.MK. Fixed.', badge:'pfix', label:'Bug fix' },
-    { dot:'var(--sf-red)',    date:'Apr 15',  char:'M. Bison',      move:'Psycho Mine — Drive Reversal bug',   desc:'Mine stayed embedded if Drive Reversal performed after blocking. Fixed.', badge:'pfix', label:'Bug fix' },
-    { dot:'var(--sf-green)',  date:'Mar 17',  char:'Alex ★ Year 3', move:'New character added',                desc:'Grappler/rush-down hybrid. Power Bomb, Slash Elbow. B-tier with high upside.', badge:'pbuff', label:'New' },
-    { dot:'var(--sf-accent)', date:'Mar 17',  char:'Drive Impact',  move:'Proximity block — frame 3 → 17',    desc:'Activation box moved from frame 3 to frame 17. Defenders get cleaner window.', badge:'psys', label:'System' },
-    { dot:'var(--sf-green)',  date:"Jun '25", char:'Ryu',           move:'Denjin Hadoken — 5 hits → 8 hits',  desc:'Projectile speed doubled, hits increased from 5 to 8. Strongest Ryu zoning ever.', badge:'pbuff', label:'Buff' },
+    { dot:'var(--sf-green)',  date:'Oct 13',  char:'Arjun ★ Year 4', move:'New character added',               desc:'Bare-knuckle Yoga — strikes that stretch into throws. Unranked on the big lists; already a CC13 qualifier (Vxbao, WW China).', badge:'pbuff', label:'New' },
+    { dot:'var(--sf-red)',    date:'Oct 13',  char:'M. Bison',       move:'OD Double Knee Press — ground bound', desc:'Knockdown becomes ground bound so the third hit connects; Psycho Mine / Devil Reverse fixes. Luke Burnout chip, Guile Sonic Cross, Chun-Li Serenity Stream fixes.', badge:'pfix', label:'Bug fix' },
+    { dot:'var(--sf-accent)', date:'Aug 3',   char:'System',         move:'Season 4 balance update',            desc:'Drive Reversal input fix, Frame Meter in training, trials at 50% speed. Modern Down+SP strength select for seven fighters.', badge:'psys', label:'System' },
+    { dot:'var(--sf-green)',  date:'Aug 3',   char:'Jamie',          move:'Full Moon Kick — 1000 → 2000',       desc:'Damage doubled, st.HK range up. Cammy OD Quick Spin Knuckle -2 → +3 on block. Luke Sand Blast knocks down on counter-hit.', badge:'pbuff', label:'Buff' },
+    { dot:'var(--sf-red)',    date:'Aug 3',   char:'Ken',            move:'cr.MP — 700 → 600',                   desc:'Damage down, more hit advantage. Ed back throw weakened, Mai OD Ryuuenbu reworked and st.MP riskier.', badge:'pfix', label:'Nerf' },
+    { dot:'var(--sf-green)',  date:'Aug 3',   char:'Yasmine ★',      move:'New character added',                desc:'Year 4 opener. Blanka held Electric Thunder becomes a projectile; Kimberly Shuriken Bomb stock 2 → 3; Lily Light Condor Wind gains a follow-up.', badge:'pbuff', label:'New' },
+    { dot:'var(--sf-accent)', date:'May 27',  char:'Throws',         move:'Throw escape gauge — 10,000 → 5,000', desc:'Throw escapes build half the Drive and no SA; normal throws now give SA gauge. Ingrid added, no full balance pass.', badge:'psys', label:'System' },
   ]
   const bc: Record<string,{bg:string,color:string}> = {
     pbuff:{bg:'rgba(0,255,136,0.1)',color:'var(--sf-green)'},
@@ -426,9 +500,9 @@ function MetaTab() {
     <div>
       <div style={{ background:'rgba(0,255,136,0.04)', border:'1px solid rgba(0,255,136,0.12)', borderRadius:3, padding:'7px 11px', marginBottom:12, display:'flex', alignItems:'center', gap:8, fontSize:11, color:'var(--sf-green)' }}>
         <div style={{ width:7, height:7, borderRadius:'50%', background:'var(--sf-green)', flexShrink:0 }} className="animate-blink"/>
-        <strong>Live meta feed</strong> · Season 3 · Alex Mar 17 · Latest patch Apr 15, 2026
+        <strong>Live meta feed</strong> · Season 4 · Arjun Oct 13 · Latest patch Oct 13, 2026
       </div>
-      <SL>Season 3 · Year 3 · 27 fighters</SL><ST>Current Tier List</ST>
+      <SL>Season 4 · Year 4 · 32 fighters · consensus of Tokido/Mago/Gachikun, BoogardMG, Coosco</SL><ST>Current Tier List</ST>
       <div style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, overflow:'hidden', marginBottom:16 }}>
         {tiers.map(tier=>(
           <div key={tier.label} style={{ display:'flex', alignItems:'center', gap:9, padding:'8px 13px', borderBottom:'1px solid var(--sf-border)' }}>
@@ -439,7 +513,7 @@ function MetaTab() {
           </div>
         ))}
       </div>
-      <SL>April 15 · March 17, 2026</SL><ST>Patch Feed</ST>
+      <SL>Oct 13 · Aug 3 · May 27, 2026</SL><ST>Patch Feed</ST>
       <div style={{ display:'flex', flexDirection:'column', gap:7, marginBottom:14 }}>
         {patches.map((p,i)=>(
           <div key={i} style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, padding:'10px 12px', display:'flex', gap:10 }}>
@@ -564,11 +638,13 @@ function EventsTab() {
     {id:'clips',   label:'Clips & VODs',icon:'ti-video'},
   ] as const
   const events=[
-    {mo:'May',dy:'22',yr:'2026',mc:'var(--sf-red)',   name:'Combo Breaker 2026',      loc:'Schaumburg, IL · May 22–24',                  tags:['Next Event','CPT Premier','2x EWC spots'], tc:['var(--sf-red)','var(--sf-gold)','var(--sf-muted)'],   prize:'$19,710 SF6 pool',                    warn:'Capcom adds only $2,000',reg:'https://www.combobreakerchicago.com/',stream:'https://www.twitch.tv/capcomfighters'},
-    {mo:'Jun',dy:'26',yr:'2026',mc:'var(--sf-gold)',  name:'EVO Las Vegas 2026',       loc:'Las Vegas Convention Center · Jun 26–28',     tags:['EVO Flagship','CPT Premier','2x EWC'],     tc:['var(--sf-gold)','var(--sf-gold)','var(--sf-muted)'],   prize:'TO-funded pool',                      warn:'$0 from Capcom',         reg:'https://www.start.gg/evo',              stream:'https://www.twitch.tv/evo'},
-    {mo:'Jul',dy:'10',yr:'2026',mc:'var(--sf-green)', name:'BAM 16 — Melbourne',       loc:'Melbourne, Australia · First-ever Aus CPT',   tags:['New Premier','CPT Points'],               tc:['var(--sf-green)','var(--sf-muted)'],                   prize:'Prize TBA',                           warn:'',                       reg:'https://sf.esports.capcom.com/cpt/',   stream:'https://www.twitch.tv/capcomfighters'},
-    {mo:'Jul',dy:'28',yr:'2026',mc:'var(--sf-gold)',  name:'Esports World Cup 2026',   loc:'Riyadh, Saudi Arabia · Jul 28–31 · 32 players',tags:['$1,000,000','Tier 1','CC13 qualifier'],  tc:['var(--sf-gold)','var(--sf-accent)','var(--sf-muted)'], prize:'$1,000,000 USD · Daigo & MenaRD in',  warn:'',                       reg:'https://esportsworldcup.com/',          stream:'https://www.twitch.tv/capcomfighters'},
-    {mo:'Mar',dy:'??',yr:'2027',mc:'var(--sf-purple)',name:'Capcom Cup 13',             loc:'Ryogoku Kokugikan, Tokyo · World Championship',tags:['World Final','$1M+ Prize','48 Players'],  tc:['var(--sf-purple)','var(--sf-gold)','var(--sf-muted)'],  prize:'$2.1M total CPT season',             warn:'',                       reg:'https://sf.esports.capcom.com/cpt/',   stream:'https://sf.esports.capcom.com/cpt/'},
+    {mo:'Nov',dy:'14',yr:'2026',mc:'var(--sf-red)',   name:'World Warrior Finals — Middle East · US/CA West',loc:'Nov 14 · Nov 15 · online/regional',          tags:['Next Event','CC13 slots','World Warrior'], tc:['var(--sf-red)','var(--sf-gold)','var(--sf-muted)'],   prize:'A Capcom Cup 13 seat per region',  warn:'',reg:'https://sf.esports.capcom.com/cpt/',stream:'https://www.twitch.tv/capcomfighters'},
+    {mo:'Nov',dy:'22',yr:'2026',mc:'var(--sf-red)',   name:'World Warrior Finals — Germany',   loc:'Nov 22 · then US Midwest Dec 6',             tags:['CC13 slots','World Warrior'],             tc:['var(--sf-gold)','var(--sf-muted)'],                   prize:'A Capcom Cup 13 seat per region',  warn:'',reg:'https://sf.esports.capcom.com/cpt/',stream:'https://www.twitch.tv/capcomfighters'},
+    {mo:'Dec',dy:'13',yr:'2026',mc:'var(--sf-red)',   name:'World Warrior Finals — Japan · France/Monaco · US/CA East',loc:'Dec 13 · the last three seats',tags:['Last WW finals','CC13 slots'],      tc:['var(--sf-red)','var(--sf-gold)'],                       prize:'The field reaches 48',              warn:'',reg:'https://sf.esports.capcom.com/cpt/',stream:'https://www.twitch.tv/capcomfighters'},
+    {mo:'Jan',dy:'10',yr:'2027',mc:'var(--sf-accent)',name:'SFL Pro-JP Playoffs',              loc:'Jan 10–11 · Grand Final Feb 23',              tags:['League','SFL WC berth'],                  tc:['var(--sf-accent)','var(--sf-muted)'],                  prize:'A place beside RED DUNES and 2GAME', warn:'',reg:'https://sf.esports.capcom.com/sfl/',stream:'https://www.twitch.tv/capcomfighters'},
+    {mo:'Jan',dy:'15',yr:'2027',mc:'var(--sf-green)', name:'Evo Singapore 2027',               loc:'Marina Bay Sands · Jan 15–17',                tags:['New Evo','Lineup TBA'],                   tc:['var(--sf-green)','var(--sf-muted)'],                   prize:'Prize TBA',                          warn:'SF6 lineup not yet confirmed',reg:'https://www.start.gg/evo',stream:'https://www.twitch.tv/evo'},
+    {mo:'Mar',dy:'10',yr:'2027',mc:'var(--sf-purple)',name:'Capcom Cup 13 · SFL World Championship',loc:'Ryogoku Kokugikan, Tokyo · Mar 10–14',      tags:['World Final','$1M first','48 players'],   tc:['var(--sf-purple)','var(--sf-gold)','var(--sf-muted)'],  prize:'$1,000,000 to the winner · ~$2.1M season',warn:'',reg:'https://sf.esports.capcom.com/cpt/',stream:'https://www.twitch.tv/capcomfighters'},
+    {mo:'Apr',dy:'30',yr:'2027',mc:'var(--sf-gold)',  name:'Evo Japan 2027',                   loc:'Tokyo Big Sight · Apr 30 – May 2',            tags:['Evo Flagship','7,168 to beat'],           tc:['var(--sf-gold)','var(--sf-muted)'],                    prize:'TO-funded pool',                     warn:'Some sources list Apr 29 — check Evo',reg:'https://www.start.gg/evo',stream:'https://www.twitch.tv/evo'},
   ]
   const channels=[
     {name:'Capcom Fighters',sub:'Official Twitch · CPT live',       icon:'ti-brand-twitch', bg:'#6441a5',          url:'https://www.twitch.tv/capcomfighters'},
@@ -580,8 +656,11 @@ function EventsTab() {
   ]
   const clips=[
     {bg:'linear-gradient(135deg,#1a0a2e,#2a1044)',title:'Capcom Cup 12 Grand Finals',      meta:'Mar 14, 2026 · Tokyo · Sahara wins',      sub:'Official VOD · $1,282,000 pool',        dur:'2:14:38',url:'https://www.youtube.com/@CapcomFighters'},
-    {bg:'linear-gradient(135deg,#1a1000,#3a2200)',title:'EVO 2025 SF6 Top 8',              meta:'Aug 3, 2025 · Las Vegas · MenaRD wins',   sub:'Official VOD · EVO',                    dur:'1:48:22',url:'https://www.youtube.com/@CapcomFighters'},
-    {bg:'linear-gradient(135deg,#0a1a0a,#1a3a1a)',title:'Alex Reveal Trailer — Year 3',   meta:'Mar 2026 · Year 3 DLC launch',            sub:'Official · Capcom Fighters',            dur:'0:45:11',url:'https://www.youtube.com/@CapcomFighters'},
+    {bg:'linear-gradient(135deg,#1a1000,#3a2200)',title:'Evo 2026 Grand Final — the Blanka mirror', meta:'Jun 28, 2026 · Las Vegas · MenaRD over Shigematsu', sub:'Official VOD · EVO', dur:'0:41:10',url:'https://www.youtube.com/@evo'},
+    {bg:'linear-gradient(135deg,#102030,#0a1420)',title:'EWC 2026 Final — Craime, 15, takes it', meta:'Aug 1, 2026 · Paris · over Hibiki 5-2', sub:'Official VOD · Esports World Cup', dur:'0:52:00',url:'https://www.youtube.com/@CapcomFighters'},
+    {bg:'linear-gradient(135deg,#2a1400,#120800)',title:'CEO 2026 Top 8 — Tokido wins', meta:'Aug 2026 · Orlando · over Booce Lee 3-2, 3-2', sub:'Official VOD · Capcom Fighters', dur:'1:30:00',url:'https://www.youtube.com/@CapcomFighters'},
+    {bg:'linear-gradient(135deg,#0a1a0a,#1a3a1a)',title:'Arjun Gameplay Trailer — Year 4',   meta:'Oct 13, 2026 · newest fighter',            sub:'Official · Street Fighter',            dur:'0:02:30',url:'https://www.youtube.com/@StreetFighter'},
+    {bg:'linear-gradient(135deg,#1a1400,#3a2c00)',title:'Yasmine Gameplay Trailer — Year 4', meta:'Aug 3, 2026 · Season 4 opener',              sub:'Official · Street Fighter',            dur:'0:02:20',url:'https://www.youtube.com/@StreetFighter'},
     {bg:'linear-gradient(135deg,#1a1a2e,#0a0a1a)',title:'EVO 2024 Finals — Punk wins',    meta:'Jul 21, 2024 · 10,240 entrants',          sub:'Official VOD · EVO',                    dur:'1:22:04',url:'https://www.youtube.com/@CapcomFighters'},
     {bg:'linear-gradient(135deg,#0a0a0a,#1a0000)',title:"Daigo's EWC Qualification",      meta:'2025 · SFL World Championship',           sub:'The Beast qualifies for $1M Riyadh',    dur:'0:52:18',url:'https://www.youtube.com/@CapcomFighters'},
     {bg:'linear-gradient(135deg,#001422,#002244)',title:'Justin Wong: 30 Years of FGC',   meta:'Career highlights · Still competing SF6', sub:'Living legend · New York City',          dur:'0:38:44',url:'https://www.youtube.com/@CapcomFighters'},
@@ -594,13 +673,13 @@ function EventsTab() {
       {sub==='upcoming'&&(<>
         <div style={{ background:'rgba(232,28,42,0.05)', border:'1px solid rgba(232,28,42,0.16)', borderRadius:3, padding:'9px 12px', marginBottom:12, display:'flex', alignItems:'center', gap:9 }}>
           <div style={{ width:7, height:7, borderRadius:'50%', background:'var(--sf-red)', flexShrink:0 }} className="animate-blink"/>
-          <div style={{ flex:1, fontSize:11, color:'var(--sf-red)' }}><strong>CPT 2026 World Warrior Japan — Active</strong> · @CAPCOM_eSports</div>
+          <div style={{ flex:1, fontSize:11, color:'var(--sf-red)' }}><strong>CPT 2026 — Premiers complete · World Warrior finals through Dec 13</strong> · @CAPCOM_eSports</div>
           <a href="https://www.twitch.tv/capcomfighters" target="_blank" rel="noopener" style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', padding:'5px 11px', background:'var(--sf-red)', color:'#fff', borderRadius:2, textDecoration:'none', flexShrink:0 }}>Watch</a>
         </div>
         <div style={{ background:'rgba(255,102,102,0.04)', border:'1px solid rgba(255,102,102,0.16)', borderRadius:3, padding:'9px 12px', marginBottom:12, fontSize:11, color:'#ccaaaa', lineHeight:1.55 }}>
           ⚠ <strong style={{ color:'#ff6666' }}>Prize note:</strong> Capcom contributes $2,000 to Premier winners. EVO 2026 gets $0. Big money ($1M+) reserved for CC13 Japan 2027.
         </div>
-        <SL>CPT 2026 · Now through 2027</SL><ST>Full Schedule</ST>
+        <SL>Nov 2026 → May 2027</SL><ST>Full Schedule</ST>
         {events.map((ev,i)=>(
           <div key={i} style={{ background:'var(--sf-dark2)', border:'1px solid var(--sf-border)', borderRadius:4, padding:'11px 12px', display:'flex', gap:10, alignItems:'flex-start', marginBottom:7 }}>
             <div style={{ display:'flex', flexDirection:'column', alignItems:'center', width:44, flexShrink:0, background:'var(--sf-dark3)', border:'1px solid var(--sf-border)', borderRadius:3, padding:'6px 3px' }}>
@@ -660,35 +739,35 @@ function EventsTab() {
 function PlayersTab() {
   const [sel, setSel] = useState<string|null>(null)
   const players = [
-    { key:'endingwalker', name:'EndingWalker',  flag:'🇩🇪', team:'MOUZ',      main:'Ryu',      badge:'🔥 Season 3 — 10-0 SFL',       bc:'var(--sf-green)',  bigStat:'10-0', bigLabel:'SFL record',    era:'Current',
+    { key:'endingwalker', name:'EndingWalker',  flag:'🇩🇪', team:'MOUZ',      main:'Ryu / Ed', badge:'SFL EMEAA 2026 · Ryu specialist', bc:'var(--sf-green)', bigStat:'10-0', bigLabel:'SFL 2025 run', era:'Current',
       bio:"The most in-form player in SF6. His 10-0 SFL run with Ryu proves the character is elite in Season 3. Patient, methodical play maximises every Elena update buff.",
       playstyle:"EndingWalker is the definition of patient, methodical play. He maximizes every advantage, never takes risks, and wins through superior neutral and anti-air discipline. His Ryu play proves fundamentals still dominate — no gimmicks, just frame-perfect execution and deep matchup knowledge.",
       rivalry:"Watch his sets against Tokido — two fundamentals-first players with different philosophical approaches to neutral.",
       moment:"Going 10-0 in SFL Season 3 with a character most players had written off after Season 2. A statement that redefined Ryu's place in the meta.",
       timeline:[{yr:'2019',ev:'Begins competing locally in Germany'},{yr:'2021',ev:'First international tournament appearance'},{yr:'2023',ev:'Signs with MOUZ esports'},{yr:'2024',ev:'Multiple CPT top 8 placements'},{yr:'2025',ev:'SFL Season 3 — historic 10-0 record with Ryu'},{yr:'2026',ev:'MOUZ top seed heading into Combo Breaker'}],
       stats:{neutralIQ:92,execution:88,adaptation:90,drive:85,clutch:87}, tags:['Patient neutral','Denjin charge','Anti-air discipline','Punish-first'], results:[{ev:'SFL Season 3',char:'Ryu',place:'10-0',prize:'Top seed'},{ev:'CC12',char:'Ryu',place:'Top 8',prize:'Qualified'}] },
-    { key:'punk',         name:'Punk',          flag:'🇺🇸', team:'FLY',       main:'Luke',     badge:'EVO 2024 Champion',            bc:'var(--sf-gold)',   bigStat:'EVO',  bigLabel:'2024 Champ',    era:'Current',
+    { key:'punk',         name:'Punk',          flag:'🇺🇸', team:'Shopify Rebellion', main:'Cammy', badge:'2nd Evo Japan 2026 · CC13 qualified', bc:'var(--sf-gold)', bigStat:'CC13', bigLabel:'Qualified',   era:'Current',
       bio:"Benchmark of SF6 dominance. EVO 2024 win against 10,240 entrants cemented his legacy. Relentless Drive Rush pressure, high-damage corner carry, and pattern recognition that borders on predictive.",
       playstyle:"Punk plays with overwhelming confidence and reads opponents faster than almost anyone. His Drive Rush timing is frame-perfect, his corner carry routes optimized to pixel level, and his mental game is unmatched under pressure. He turns defense into offense in a single input.",
       rivalry:"Punk vs MenaRD — two of the most explosive offensive players in SF6, always a highlight reel when they meet.",
       moment:"EVO 2024 Grand Finals — navigating a 10,240-player bracket and claiming the championship. The largest SF6 EVO bracket in history.",
       timeline:[{yr:'2016',ev:'Emerges as teenage prodigy on the US circuit'},{yr:'2017',ev:'EVO top 8 at age 17 — FGC takes notice'},{yr:'2018',ev:'Multiple major wins establish him as America\'s best'},{yr:'2022',ev:'Signs with FlyQuest esports'},{yr:'2024',ev:'EVO 2024 Champion — defeats 10,240 entrants with Luke'},{yr:'2026',ev:'Defending his legacy heading into EVO Las Vegas'}],
       stats:{neutralIQ:94,execution:96,reads:92,drive:95,clutch:91}, tags:['Drive Rush master','Corner trap','Sand blast','High-dmg reads'], results:[{ev:'EVO 2024',char:'Luke',place:'1st',prize:'Champion'},{ev:'CC12',char:'Luke',place:'Top 16',prize:'Qualified'}] },
-    { key:'tokido',       name:'Tokido',        flag:'🇯🇵', team:'REJECT',    main:'JP (S3)',  badge:'30+ EVO Top-8s · Legend',      bc:'var(--sf-purple)', bigStat:'30+',  bigLabel:'EVO Top-8s',    era:'Legend',
+    { key:'tokido',       name:'Tokido',        flag:'🇯🇵', team:'VARREL',    main:'JP',       badge:'CEO 2026 Champion · Legend',   bc:'var(--sf-purple)', bigStat:'CEO',  bigLabel:'2026 Champ',    era:'Legend',
       bio:"One of the Five Japanese Gods. 30+ EVO Top-8s across multiple franchises. Switched to JP for Season 3 — believes the April fix left the character fundamentally dominant at highest level.",
       playstyle:"Tokido is the ultimate adaptor. He studies opponents between rounds and changes his entire gameplan based on what he sees. His mental fortitude under pressure is legendary — he gets more dangerous when he's losing.",
       rivalry:"Tokido vs Daigo — the eternal Japanese rivalry. Two Five Gods who have defined the FGC for over 20 years. Every set is must-watch.",
       moment:"The adversary in EVO Moment 37 — Daigo's legendary parry against Tokido's SA2 in 2004 is the most famous moment in FGC history. Both men made it immortal.",
       timeline:[{yr:'2004',ev:'First EVO appearance — immediately top 8'},{yr:'2009',ev:'EVO Champion — begins Five Gods legacy'},{yr:'2011',ev:'30+ EVO Top-8s across multiple titles'},{yr:'2022',ev:'Signs with REJECT esports'},{yr:'2024',ev:'Adapts to SF6 — multiple CPT Premier placements'},{yr:'2026',ev:'Switches to JP for Season 3'}],
       stats:{reads:97,adaptation:95,neutralIQ:96,mental:98,clutch:94}, tags:['Patient zoning','Punish-first','Round adaptation','Gauge management'], results:[{ev:'CPT Japan',char:'JP',place:'1st',prize:'Premier win'},{ev:'CC12',char:'JP',place:'Top 16',prize:'Qualified'}] },
-    { key:'menard',       name:'MenaRD',        flag:'🇩🇴', team:'',          main:'TBC',      badge:'EVO 2025 Champion',            bc:'var(--sf-gold)',   bigStat:'EVO',  bigLabel:'2025 Champ',    era:'Current',
-      bio:"Reigning EVO champion. Already qualified for EWC 2026 via the SFL World Championship. One of the first confirmed names in Riyadh's $1M field. Considered by many the best active player.",
+    { key:'menard',       name:'MenaRD',        flag:'🇩🇴', team:'WBG RB',    main:'Blanka',   badge:'Evo 2026 Champion · 4 Evo titles', bc:'var(--sf-gold)', bigStat:'4×',  bigLabel:'Evo titles',    era:'Current',
+      bio:"Reigning Evo champion — Evo Japan 2024, Evo Japan 2025, Vegas 2025, Vegas 2026 — and the Blink Respawn 2026 winner at home in Santo Domingo. Four Evo titles in three years; Capcom Cup is the one trophy he lacks, and he is in the CC13 field.",
       playstyle:"MenaRD is the most explosively offensive player in SF6. His execution is elite-level, damage output per touch is among the highest in the world, and he has a champion's mentality in Grand Finals.",
       rivalry:"MenaRD vs Punk — both explosive offensive players who bring out the best in each other. Two champions proving who is THE champion.",
       moment:"EVO 2025 Grand Finals — claiming the championship and cementing Dominican Republic's place as a global SF6 powerhouse.",
       timeline:[{yr:'2015',ev:'Begins competing in Dominican Republic'},{yr:'2018',ev:'First international appearance — immediate impact'},{yr:'2019',ev:'EVO top 8 — DR on the FGC map'},{yr:'2022',ev:'Multiple Capcom Cup appearances'},{yr:'2025',ev:'EVO 2025 Champion'},{yr:'2026',ev:'EWC 2026 qualified — Riyadh $1M'}],
       stats:{aggression:95,execution:93,adaptation:88,clutch:94,drive:90}, tags:['Explosive offense','High-dmg combos','Mental resilience','GF performer'], results:[{ev:'EVO 2025',char:'TBC',place:'1st',prize:'Champion'},{ev:'EWC 2026',char:'TBC',place:'Qualified',prize:'$1M pool'}] },
-    { key:'daigo',        name:'Daigo Umehara', flag:'🇯🇵', team:'ROHTO/Zst.',main:'Ryu/Ken',  badge:'The Beast · Living Legend',    bc:'var(--sf-red)',    bigStat:'EWC',  bigLabel:'2026 Qualified', era:'Legend',
+    { key:'daigo',        name:'Daigo Umehara', flag:'🇯🇵', team:'REJECT',    main:'Ryu/Ken',  badge:'The Beast · CC13 qualified',   bc:'var(--sf-red)',    bigStat:'CC13', bigLabel:'Qualified',     era:'Legend',
       bio:"The most famous player in fighting game history. First EVO champion. Multiple SF titles across decades. Qualified for EWC 2026 Riyadh at age 42 via the SFL World Championship.",
       playstyle:"Daigo fights with absolute fundamentals. Every input is purposeful, every movement calculated. He wins through superior spacing and punish accuracy. His ability to adapt mid-set is unmatched — he reads opponents better in round 3 than most players do in practice.",
       rivalry:"Daigo vs Tokido — the defining rivalry of Japanese fighting games spanning 25+ years. Two Five Gods who push each other to greatness.",
@@ -716,6 +795,34 @@ function PlayersTab() {
       moment:"EVO 2016 Grand Finals — claiming the championship in dominant fashion, cementing his place among America's all-time greats.",
       timeline:[{yr:'2012',ev:'Emerges as Guile specialist on the American circuit'},{yr:'2014',ev:'First major tournament win'},{yr:'2016',ev:'EVO 2016 Champion with Nash/Guile'},{yr:'2018-2022',ev:'Consistent top placements SF4 and SF5'},{yr:'2023',ev:'Adapts to SF6 with Guile'},{yr:'2026',ev:'Still competing — one of America\'s most consistent'}],
       stats:{neutralIQ:94,defense:97,reads:93,adaptation:88,clutch:90}, tags:['Guile specialist','Defensive master','Walk-back punish','Consistent placer'], results:[{ev:'EVO 2016',char:'Nash',place:'1st',prize:'EVO Champion'},{ev:'SF6 CPT',char:'Guile',place:'Multiple Top 8s',prize:'Consistent'}] },
+    { key:'sahara',       name:'Sahara',        flag:'🇯🇵', team:'Good 8 Squad', main:'Ed',    badge:'Capcom Cup 12 Champion · $1M', bc:'var(--sf-gold)',   bigStat:'$1M',  bigLabel:'CC12 Champion', era:'Current',
+      bio:"Capcom Cup 12 champion (Mar 14, 2026) — beat Kilzyou 5-1 in the final for $1,000,000 with Ed. Auto-qualified to defend at Capcom Cup 13 in March; plays for Good 8 Squad in SFL Pro-JP.",
+      playstyle:"Sahara plays textbook Season 3 Ryu — patient neutral, disciplined anti-airs, and Denjin Hadoken zoning that punishes any hesitation. What separates her is composure: she doesn't flinch in bracket resets, and her punish-counter conversions in Grand Finals were some of the cleanest of the tournament.",
+      rivalry:"Sahara vs EndingWalker — two Ryu specialists from different regions both proving Season 3 Ryu is a genuine top-tier pick, not a fluke.",
+      moment:"Capcom Cup 12 Grand Finals, March 2026 — closing out a stacked $1,282,000 Tokyo bracket with Ryu, validating the character's post-Elena resurgence in front of a home crowd.",
+      timeline:[{yr:'2019',ev:'Begins competing on the Japanese regional circuit'},{yr:'2021',ev:'First notable CPT Japan placements'},{yr:'2023',ev:'Consistent top 8s establish her as a Ryu specialist to watch'},{yr:'2025',ev:'Qualifies for Capcom Cup 12 via CPT points'},{yr:'2026',ev:'Capcom Cup 12 Champion — Tokyo Grand Finals'}],
+      stats:{neutralIQ:93,execution:91,reads:90,drive:88,clutch:96}, tags:['Season 3 Ryu proof','Denjin zoning','CC12 Champion','Punish Counter specialist'], results:[{ev:'CC12',char:'Ryu',place:'1st',prize:'$350,000+'},{ev:'EWC 2026',char:'Ryu',place:'Qualified',prize:'$1M pool'}] },
+    { key:'kawano',       name:'Kawano',        flag:'🇯🇵', team:'',          main:'Chun-Li/Akuma', badge:'CC12 Top 8 · Dual Threat', bc:'var(--sf-accent)', bigStat:'2',    bigLabel:'CC12 chars used', era:'Current',
+      bio:"One of the few players elite enough to run two S-tier characters in the same event. Kawano's Chun-Li footsies and Akuma punish game both reached Capcom Cup 12 top 8.",
+      playstyle:"Kawano switches between Chun-Li's patient poke-and-chip neutral and Akuma's all-in punish windows depending on the matchup — a character-select mind game most players can't replicate credibly at his execution level.",
+      rivalry:"Kawano vs Sahara — the CC12 storyline of two standouts pushing character mastery to its ceiling.",
+      moment:"Capcom Cup 12 top 8 — the first player in the tournament to bench a second S-tier character mid-run and win with it.",
+      timeline:[{yr:'2020',ev:'Rises through the Japanese SF6 launch scene'},{yr:'2022',ev:'First CPT Japan regional win'},{yr:'2023',ev:'Adds Akuma as a secondary in tournament play'},{yr:'2024',ev:'Multiple Premier top 8s across both characters'},{yr:'2025',ev:'Qualifies for CC12'},{yr:'2026',ev:'CC12 Top 8 with two different characters'}],
+      stats:{execution:96,adaptation:94,neutralIQ:90,reads:91,clutch:88}, tags:['Dual-character threat','Chun-Li footsies','Akuma punish game','Character-select mind games'], results:[{ev:'CC12',char:'Chun-Li/Akuma',place:'Top 8',prize:'Qualified'},{ev:'CPT Japan',char:'Chun-Li',place:'1st',prize:'Regional win'}] },
+    { key:'nemo',         name:'Nemo',          flag:'🇰🇷', team:'',          main:'Zangief',  badge:'Grappler Specialist',          bc:'#880000',          bigStat:'B-tier', bigLabel:'proof of concept', era:'Current',
+      bio:"The most prominent Zangief player at international level, proving the Red Cyclone still terrifies opponents when every SPD is a threat. Nemo's defensive reads open the door for devastating momentum swings.",
+      playstyle:"Nemo plays a patient waiting game — absorbing pressure behind Zangief's armor and defense stats until one read lands. A single SPD from Nemo changes an entire set's momentum, and he knows exactly when to gamble.",
+      rivalry:"Nemo vs zoning specialists — his matches against fireball characters are must-watch clinics on closing distance against the run-away game plan.",
+      moment:"A tournament-defining SPD read against a heavily favored opponent at a CPT regional, turning a near-elimination set into a comeback win.",
+      timeline:[{yr:'2019',ev:'Begins competing on the South Korean circuit'},{yr:'2021',ev:"Establishes himself as the region's top Zangief"},{yr:'2023',ev:'First international CPT regional placement'},{yr:'2024',ev:'Multiple online and offline grappler showcase wins'},{yr:'2025',ev:'Continues as the benchmark Zangief at every major he enters'},{yr:'2026',ev:'Competing for a Season 3 CPT points push'}],
+      stats:{defense:96,reads:93,patience:97,power:92,clutch:90}, tags:['SPD reads','Armor discipline','Momentum swings','Grappler benchmark'], results:[{ev:'CPT Korea',char:'Zangief',place:'1st',prize:'Regional win'},{ev:'CC12',char:'Zangief',place:'Top 32',prize:'Qualified'}] },
+    { key:'fuudo',        name:'Fuudo',         flag:'🇯🇵', team:'',          main:'Dhalsim',  badge:'Dhalsim Veteran',              bc:'#CC6600',          bigStat:'C-tier', bigLabel:'made lethal',   era:'Legend',
+      bio:"A historically prominent Dhalsim player who has proven the longest limbs in the game can still win at the highest level, generation after generation of Street Fighter.",
+      playstyle:"Fuudo plays spacing chess — using Dhalsim's absurd range to control exactly where a match happens, then punishing any approach with fire and limbs before it lands. Teleport mix-ups arrive exactly when opponents think they're safe.",
+      rivalry:"Fuudo vs rushdown specialists — his sets are the definitive teaching tape on how patience beats aggression when the spacing is right.",
+      moment:"A signature teleport-mix comeback at a major SF6 event, turning what looked like a lost round into a highlight-reel win purely on spacing mastery.",
+      timeline:[{yr:'2008',ev:'Establishes himself in the Japanese arcade scene'},{yr:'2012',ev:'Multiple major placements across SF4'},{yr:'2019',ev:'Continues Dhalsim mastery into SFV'},{yr:'2023',ev:'Adapts Dhalsim to SF6 Drive system'},{yr:'2025',ev:'Still competing at Premiers with a C-tier character'},{yr:'2026',ev:'Proof that character loyalty still wins rounds'}],
+      stats:{neutralIQ:95,reads:92,patience:98,execution:90,clutch:87}, tags:['Longest limbs','Spacing chess','Teleport mix','Character loyalty'], results:[{ev:'Multiple Premiers',char:'Dhalsim',place:'Various Top 8s',prize:'Sustained excellence'},{ev:'CC12',char:'Dhalsim',place:'Qualified',prize:'Season 3'}] },
   ]
   const active = sel ? players.find(p=>p.key===sel) : null
   return (
@@ -763,32 +870,24 @@ function PlayersTab() {
           </div>
           <div style={{ padding:'11px 14px' }}>
             <p style={{ fontSize:12, color:'#aaaacc', lineHeight:1.65, marginBottom:9 }}>{active.bio}</p>
-
-            {/* Playstyle */}
             {(active as any).playstyle && (
               <div style={{ marginBottom:10, padding:'9px 11px', background:'rgba(0,212,255,0.04)', border:'1px solid rgba(0,212,255,0.14)', borderRadius:3 }}>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-accent)', marginBottom:4 }}>Playstyle</div>
                 <p style={{ fontSize:11, color:'#aaaacc', lineHeight:1.6, margin:0 }}>{(active as any).playstyle}</p>
               </div>
             )}
-
-            {/* Signature Moment */}
             {(active as any).moment && (
               <div style={{ marginBottom:10, padding:'9px 11px', background:'rgba(245,166,35,0.04)', border:'1px solid rgba(245,166,35,0.14)', borderRadius:3 }}>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-gold)', marginBottom:4 }}>⚡ Signature Moment</div>
                 <p style={{ fontSize:11, color:'#aaaacc', lineHeight:1.6, margin:0 }}>{(active as any).moment}</p>
               </div>
             )}
-
-            {/* Rivalry */}
             {(active as any).rivalry && (
               <div style={{ marginBottom:10, padding:'9px 11px', background:'rgba(232,28,42,0.04)', border:'1px solid rgba(232,28,42,0.14)', borderRadius:3 }}>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-red)', marginBottom:4 }}>🔥 Key Rivalry</div>
                 <p style={{ fontSize:11, color:'#aaaacc', lineHeight:1.6, margin:0 }}>{(active as any).rivalry}</p>
               </div>
             )}
-
-            {/* Career Timeline */}
             {(active as any).timeline && (
               <div style={{ marginBottom:10 }}>
                 <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-muted)', marginBottom:6 }}>Career Timeline</div>
@@ -804,16 +903,10 @@ function PlayersTab() {
                 </div>
               </div>
             )}
-
-            {/* Style tags */}
-            <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginBottom:9 }}>
-              {active.tags.map(t=><span key={t} style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, textTransform:'uppercase', padding:'1px 6px', border:'1px solid var(--sf-border)', borderRadius:2, color:'var(--sf-muted)' }}>{t}</span>)}
-            </div>
-
-            {/* Results */}
+            <div style={{ display:'flex', flexWrap:'wrap', gap:3, marginBottom:9 }}>{active.tags.map((t: string)=><span key={t} style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, textTransform:'uppercase', padding:'1px 6px', border:'1px solid var(--sf-border)', borderRadius:2, color:'var(--sf-muted)' }}>{t}</span>)}</div>
             <div style={{ fontFamily:'"Barlow Condensed"', fontSize:9, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-muted)', marginBottom:5 }}>Career Results</div>
             <div style={{ background:'var(--sf-dark3)', borderRadius:3, overflow:'hidden', marginBottom:8 }}>
-              {active.results.map((r,ri)=>(
+              {active.results.map((r: any,ri: number)=>(
                 <div key={ri} style={{ display:'grid', gridTemplateColumns:'90px 1fr auto auto', gap:7, padding:'6px 9px', borderBottom:ri<active.results.length-1?'1px solid var(--sf-border)':'none', alignItems:'center' }}>
                   <div style={{ fontFamily:'"Barlow Condensed"', fontSize:10, fontWeight:700, color:'#fff', textTransform:'uppercase' }}>{r.ev}</div>
                   <div style={{ fontSize:9, color:'var(--sf-muted)' }}>{r.char}</div>
@@ -832,23 +925,71 @@ function PlayersTab() {
 
 function ResultsTab() {
   const events = [
-    { name:'Capcom Cup 12', meta:'Mar 11–15, 2026 · Ryogoku Kokugikan, Tokyo · 48 players', prize:'$1,282,000', url:'https://liquipedia.net/fighters/Street_Fighter_6/Tournaments', results:[
-      { pos:'1st', pc:'var(--sf-gold)', player:'Sahara',   char:'Ryu',    country:'🇯🇵', prize:'$350,000+', note:'' },
-      { pos:'2nd', pc:'#ccc',           player:'Kilzyou',  char:'TBC',    country:'🇯🇵', prize:'$120,000+', note:'' },
-      { pos:'Note',pc:'#888',           player:'Kawano on Akuma · Multiple Ryu in top 8 · Validates post-Elena Ryu', char:'', country:'', prize:'', note:'Liquipedia' },
-    ]},
+    { name:'Evo France 2026', meta:'Oct 9–11, 2026 · Nice · final CPT Premier · 1,075+ entrants', prize:'CC13 slot', url:'https://www.eventhubs.com/news/2026/oct/09/evo-france-2026-results/', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'DualKevin', char:'Rashid', country:'🇯🇵', prize:'Capcom Cup 13', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Tachikawa', char:'C. Viper', country:'🇯🇵', prize:'', note:'' },
+      { pos:'3rd', pc:'#cd7f32', player:'Punk', char:'Cammy', country:'🇺🇸', prize:'', note:'' },
+      { pos:'Note', pc:'#888', player:'Kobayan 4th · Problem X and Hinao 5th · Dogura, Lexx 7th', char:'', country:'', prize:'', note:'EventHubs' },
+    ] },
+    { name:'Ultimate Fighting Arena 2026', meta:'Sep 2026 · Paris · CPT Premier', prize:'CC13 slot', url:'https://www.eventhubs.com/news/2026/sep/11/ultimate-fighting-arena-2026-results/', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'NoahTheProdigy', char:'Luke', country:'🇺🇸', prize:'Capcom Cup 13', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Higuchi', char:'Guile', country:'🇯🇵', prize:'', note:'' },
+      { pos:'3rd', pc:'#cd7f32', player:'AngryBird', char:'Ryu / Akuma', country:'🇦🇪', prize:'', note:'' },
+    ] },
+    { name:'CEO 2026', meta:'Aug 2026 · Orlando · CPT Premier · 1,100+ entrants', prize:'CC13 slot', url:'https://www.eventhubs.com/news/2026/aug/14/ceo-2026-results/', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'Tokido', char:'JP', country:'🇯🇵', prize:'Champion', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Booce Lee', char:'Terry', country:'🇵🇭', prize:'Capcom Cup 13', note:'' },
+      { pos:'3rd', pc:'#cd7f32', player:'Micky', char:'Mai / Cammy', country:'🇯🇵', prize:'', note:'' },
+    ] },
+    { name:'Esports World Cup 2026', meta:'Jul–Aug 2026 · Paris · 269-player LCQ', prize:'$250,000 first', url:'https://esportsworldcup.com/en/press-releases/craime-claims-sf6-at-ewc26-title', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'Craime (age 15)', char:'Ryu', country:'🇨🇱', prize:'$250,000 · CC13', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Hibiki', char:'Lily', country:'🇯🇵', prize:'', note:'from the LCQ' },
+      { pos:'3rd', pc:'#cd7f32', player:'Hinao', char:'Sagat', country:'🇯🇵', prize:'$70,000', note:'' },
+      { pos:'Note', pc:'#888', player:'Craime beat MenaRD 5-3 and Yamaguchi on the way — youngest EWC champion ever', char:'', country:'', prize:'', note:'EWC' },
+    ] },
+    { name:'BAM 16', meta:'Jul 10–12, 2026 · Melbourne · first Australian CPT Premier', prize:'CC13 slot', url:'https://www.eventhubs.com/news/2026/jul/09/battle-arena-melbourne-16-results/', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'Hinao', char:'Ryu / Sagat', country:'🇯🇵', prize:'Capcom Cup 13', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Cosa', char:'Akuma', country:'🇯🇵', prize:'', note:'' },
+      { pos:'3rd', pc:'#cd7f32', player:'Micky', char:'Mai', country:'🇯🇵', prize:'', note:'' },
+    ] },
+    { name:'Evo 2026', meta:'Jun 26–28, 2026 · Las Vegas · 2,414 entrants', prize:'CC13 slot', url:'https://www.eventhubs.com/news/2026/jun/26/evo-2026-results/', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'MenaRD', char:'Blanka / M. Bison', country:'🇩🇴', prize:'Evo Champion · 4th title', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Shigematsu', char:'Blanka', country:'🇯🇵', prize:'Capcom Cup 13', note:'won set 1, reset' },
+      { pos:'3rd', pc:'#cd7f32', player:'Kilzyou', char:'Mai / Juri', country:'🇫🇷', prize:'', note:'' },
+      { pos:'Note', pc:'#888', player:'First Blanka mirror grand final in SF6 Evo history · Craime 4th · Tantanmen, Dogura 5th', char:'', country:'', prize:'', note:'EventHubs' },
+    ] },
+    { name:'Blink Respawn 2026', meta:'Jun 5–7, 2026 · Santo Domingo · CPT Premier', prize:'CC13 slot', url:'https://sf.esports.capcom.com/cpt-news/c15944/', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'MenaRD', char:'Blanka', country:'🇩🇴', prize:'Capcom Cup 13 · home win', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'NoahTheProdigy', char:'Luke', country:'🇺🇸', prize:'', note:'' },
+      { pos:'3rd', pc:'#cd7f32', player:'Punk', char:'Cammy', country:'🇺🇸', prize:'', note:'' },
+    ] },
+    { name:'Combo Breaker 2026', meta:'May 22–24, 2026 · Schaumburg, IL · CPT Premier', prize:'CC13 slot', url:'https://www.shacknews.com/article/149278/combo-breaker-2026-winners-top-8', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'Xiao Hai', char:'Mai / M. Bison', country:'🇨🇳', prize:'Capcom Cup 13', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Hinao', char:'Sagat', country:'🇯🇵', prize:'', note:'' },
+      { pos:'3rd', pc:'#cd7f32', player:'Jr.', char:'Zangief', country:'🇺🇸', prize:'', note:'' },
+    ] },
+    { name:'Evo Japan 2026', meta:'May 2026 · Tokyo · 7,168 entrants — Guinness World Record', prize:'CC13 slot', url:'https://evo.gg/news/yamaguchi-takes-biggest-street-fighter-tournament-ever-at-evo-japan-2026', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'Yamaguchi', char:'Mai', country:'🇯🇵', prize:'Capcom Cup 13', note:'' },
+      { pos:'2nd', pc:'#ccc', player:'Punk', char:'Cammy', country:'🇺🇸', prize:'', note:'3-1 final' },
+      { pos:'3rd', pc:'#cd7f32', player:'Higuchi', char:'Guile', country:'🇯🇵', prize:'', note:'' },
+    ] },
+    { name:'Capcom Cup 12', meta:'Mar 11–15, 2026 · Ryogoku Kokugikan, Tokyo · 48 players', prize:'$1,000,000 first', url:'https://players.com.ua/en/news/capcom-cup-12-finished-sahara-wins-the-title-and-1-million-prize/', results:[
+      { pos:'1st', pc:'var(--sf-gold)', player:'Sahara', char:'Ed', country:'🇯🇵', prize:'$1,000,000', note:'5-1 final' },
+      { pos:'2nd', pc:'#ccc', player:'Kilzyou', char:'Mai', country:'🇫🇷', prize:'', note:'' },
+      { pos:'3rd', pc:'#cd7f32', player:'Blaz', char:'Sagat / Jamie', country:'🇨🇱', prize:'', note:'Higuchi 4th' },
+    ] },
     { name:'EVO 2025', meta:'Aug 1–3, 2025 · Las Vegas · 8,541 entrants', prize:'Champion crowned', url:'https://www.start.gg/evo', results:[
       { pos:'1st', pc:'var(--sf-gold)', player:'MenaRD', char:'TBC', country:'🇩🇴', prize:'EVO Champion', note:'' },
-      { pos:'Info',pc:'#888',           player:'8,541 entrants · Daigo qualifies for EWC 2026 via SFL WC', char:'', country:'', prize:'', note:'start.gg' },
-    ]},
+      { pos:'Info', pc:'#888', player:'8,541 entrants · Daigo qualifies for EWC 2026 via SFL WC', char:'', country:'', prize:'', note:'start.gg' },
+    ] },
     { name:'EVO 2024', meta:'Jul 19–21, 2024 · Las Vegas · 10,240 entrants — SF6 record', prize:'Record entry', url:'https://www.start.gg/evo', results:[
       { pos:'1st', pc:'var(--sf-gold)', player:'Punk', char:'Luke', country:'🇺🇸', prize:'EVO Champion', note:'' },
-      { pos:'Info',pc:'#888',           player:'10,240 entrants · Largest SF6 EVO bracket in history', char:'', country:'', prize:'', note:'start.gg' },
-    ]},
+      { pos:'Info', pc:'#888', player:'10,240 entrants · Largest SF6 EVO bracket in history', char:'', country:'', prize:'', note:'start.gg' },
+    ] },
     { name:'EVO 2023 — SF6 World Premiere', meta:'Aug 4–6, 2023 · Las Vegas · First EVO for Street Fighter 6', prize:'History made', url:'https://liquipedia.net/fighters/Street_Fighter_6/Tournaments', results:[
       { pos:'1st', pc:'var(--sf-gold)', player:'AngryBird', char:'Rashid', country:'🇦🇪', prize:'First SF6 EVO Champ', note:'' },
-      { pos:'Info',pc:'#888',           player:'9,221 entrants · First-ever SF6 EVO champion · Middle Eastern FGC on world stage', char:'', country:'', prize:'', note:'Full story' },
-    ]},
+      { pos:'Info', pc:'#888', player:'9,221 entrants · First-ever SF6 EVO champion · Middle Eastern FGC on world stage', char:'', country:'', prize:'', note:'Full story' },
+    ] },
   ]
   return (
     <div>
@@ -863,9 +1004,7 @@ function ResultsTab() {
             <div style={{ fontFamily:'"Barlow Condensed"', fontSize:13, fontWeight:700, color:'var(--sf-gold)', flexShrink:0 }}>{ev.prize}</div>
           </div>
           <table style={{ width:'100%', borderCollapse:'collapse' }}>
-            <thead>
-              <tr>{['Pos','Player','Main','','Prize',''].map((h,hi)=><th key={hi} style={{ textAlign:'left', padding:'6px 12px', fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-muted)', borderBottom:'1px solid var(--sf-border)' }}>{h}</th>)}</tr>
-            </thead>
+            <thead><tr>{['Pos','Player','Main','','Prize',''].map((h,hi)=><th key={hi} style={{ textAlign:'left', padding:'6px 12px', fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, letterSpacing:1, textTransform:'uppercase', color:'var(--sf-muted)', borderBottom:'1px solid var(--sf-border)' }}>{h}</th>)}</tr></thead>
             <tbody>
               {ev.results.map((r,ri)=>(
                 <tr key={ri}>
@@ -874,7 +1013,7 @@ function ResultsTab() {
                   <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none', fontSize:10, color:'var(--sf-muted)' }}>{r.char}</td>
                   <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none', fontSize:13 }}>{r.country}</td>
                   <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none' }}><span style={{ fontFamily:'"Barlow Condensed"', fontSize:11, fontWeight:700, color:'var(--sf-gold)' }}>{r.prize}</span></td>
-                  <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none' }}>{r.note&&<a href={ev.url} target="_blank" rel="noopener" style={{ fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, textTransform:'uppercase', color:'var(--sf-accent)', textDecoration:'none' }}>{r.note} ↗</a>}</td>
+                  <td style={{ padding:'8px 12px', borderBottom:ri<ev.results.length-1?'1px solid var(--sf-border)':'none' }}>{r.note && <a href={ev.url} target="_blank" rel="noopener" style={{ fontFamily:'"Barlow Condensed"', fontSize:8, fontWeight:700, textTransform:'uppercase', color:'var(--sf-accent)', textDecoration:'none' }}>{r.note} ↗</a>}</td>
                 </tr>
               ))}
             </tbody>
